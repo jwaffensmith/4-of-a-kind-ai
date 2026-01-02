@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Puzzle {
+  id                  String        @id @default(uuid())
+  words               Json
+  categories          Json
+  ai_reasoning        String        @db.Text
+  difficulty          String
+  is_reviewed         Boolean       @default(false)
+  times_played        Int           @default(0)
+  avg_completion_time Int?
+  avg_mistakes        Float?
+  created_at          DateTime      @default(now())
+  
+  game_sessions       GameSession[]
+  daily_puzzles       DailyPuzzle[]
+  admin_logs          AdminLog[]
+  
+  @@index([difficulty])
+  @@index([is_reviewed])
+  @@map("puzzle")
+}
+
+model GameSession {
+  id                  String    @id @default(uuid())
+  puzzle_id           String
+  username            String?
+  completed           Boolean   @default(false)
+  is_won              Boolean   @default(false)
+  attempts            Int       @default(0)
+  correct_groups      Json      @default("[]")
+  mistakes_remaining  Int       @default(4)
+  started_at          DateTime  @default(now())
+  completed_at        DateTime?
+  time_taken          Int?
+  
+  puzzle              Puzzle    @relation(fields: [puzzle_id], references: [id])
+  
+  @@index([puzzle_id])
+  @@index([username])
+  @@index([completed])
+  @@map("game_session")
+}
+
+model GameStat {
+  id               String   @id @default(uuid())
+  username         String   @unique
+  total_games      Int      @default(0)
+  total_wins       Int      @default(0)
+  perfect_games    Int      @default(0)
+  current_streak   Int      @default(0)
+  best_streak      Int      @default(0)
+  avg_time_seconds Float?
+  avg_mistakes     Float?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  @@index([total_wins])
+  @@map("game_stat")
+}
+
+model DailyPuzzle {
+  puzzle_date String   @id
+  puzzle_id   String
+  created_at  DateTime @default(now())
+  
+  puzzle      Puzzle   @relation(fields: [puzzle_id], references: [id])
+  
+  @@index([puzzle_id])
+  @@map("daily_puzzle")
+}
+
+model AdminLog {
+  id         String   @id @default(uuid())
+  action     String
+  puzzle_id  String?
+  details    Json
+  created_at DateTime @default(now())
+  
+  puzzle     Puzzle?  @relation(fields: [puzzle_id], references: [id])
+  
+  @@index([created_at])
+  @@map("admin_log")
+}
+
