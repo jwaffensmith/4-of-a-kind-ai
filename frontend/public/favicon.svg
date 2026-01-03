@@ -1,0 +1,25 @@
+<svg width="120" height="120" viewBox="20 32 88 55" xmlns="http://www.w3.org/2000/svg">
+  <!-- Four playing cards fanned out -->
+  <!-- Card 1 (back left) - PURPLE -->
+  <g transform="translate(25, 48) rotate(-18)">
+    <rect width="32" height="48" rx="3" fill="#a29bfe" stroke="#2d2d2d" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Card 2 (back center) - BLUE -->
+  <g transform="translate(38, 45) rotate(-8)">
+    <rect width="32" height="48" rx="3" fill="#4a90e2" stroke="#2d2d2d" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Card 4 (front right) - YELLOW - I -->
+  <g transform="translate(78, 30) rotate(18)">
+    <rect width="32" height="48" rx="3" fill="#f9ca24" stroke="#2d2d2d" stroke-width="1.5"/>
+    <text x="16" y="30" font-family="Arial" font-size="23" font-weight="bold" fill="#2d2d2d" text-anchor="middle">I</text>
+  </g>
+  
+  <!-- Card 3 (front center) - GREEN - A -->
+  <g transform="translate(50, 41) rotate(5)">
+    <rect width="32" height="48" rx="3" fill="#6dd5a0" stroke="#2d2d2d" stroke-width="1.5"/>
+    <text x="16" y="30" font-family="Arial" font-size="23" font-weight="bold" fill="#2d2d2d" text-anchor="middle">A</text>
+  </g>
+</svg>
+

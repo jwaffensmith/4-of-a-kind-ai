@@ -3,11 +3,13 @@ version: '3.8'
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: connections_db
+    container_name: 4oak_db
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: connections
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: 4oak
     ports:
       - "5432:5432"
     volumes:
@@ -22,13 +24,9 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-    container_name: connections_backend
-    environment:
-      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/connections
-      CLAUDE_API_KEY: ${CLAUDE_API_KEY}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
-      PORT: 3001
-      NODE_ENV: development
+    container_name: 4oak_backend
+    env_file:
+      - ./backend/.env
     ports:
       - "3001:3001"
     volumes:
@@ -43,9 +41,9 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    container_name: connections_frontend
-    environment:
-      VITE_API_URL: http://localhost:3001
+    container_name: 4oak_frontend
+    env_file:
+      - ./frontend/.env
     ports:
       - "3000:3000"
     volumes:

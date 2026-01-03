@@ -87,10 +87,12 @@ export const GameView = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="min-h-screen bg-gray-50 pt-4 pb-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">AI Connections</h1>
+        <header className="text-center mb-10">
+          <div className="flex items-center justify-center gap-4 mb-2">
+            <img src="/logo.svg" alt="Logo" className="w-32 h-32" />
+          </div>
           <p className="text-gray-600">Find groups of four words that share something in common</p>
         </header>
 

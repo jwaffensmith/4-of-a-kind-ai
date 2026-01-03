@@ -1,7 +1,7 @@
 {
-  "name": "connections-backend",
+  "name": "4oak-backend",
   "version": "1.0.0",
-  "description": "Backend for AI Connections game",
+  "description": "Backend for 4 of a Kind AI game",
   "main": "dist/Server.js",
   "scripts": {
     "dev": "tsx watch src/Server.ts",

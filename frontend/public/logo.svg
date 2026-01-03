@@ -1,0 +1,27 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- "4 of a Kind" text at the top -->
+  <text x="60" y="35" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#000000" text-anchor="middle">4 of a Kind</text>
+  
+  <!-- Four playing cards fanned out -->
+  <!-- Card 1 (back left) - PURPLE -->
+  <g transform="translate(25, 60) rotate(-18)">
+    <rect width="28" height="42" rx="3" fill="#a29bfe" stroke="#1a1a2e" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Card 2 (back center) - BLUE -->
+  <g transform="translate(38, 57) rotate(-8)">
+    <rect width="28" height="42" rx="3" fill="#4a90e2" stroke="#1a1a2e" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Card 4 (front right) - YELLOW - I -->
+  <g transform="translate(84, 40) rotate(33)">
+    <rect width="28" height="42" rx="3" fill="#f9ca24" stroke="#1a1a2e" stroke-width="1.5"/>
+    <text x="14" y="26" font-family="Arial" font-size="20" font-weight="bold" fill="#1a1a2e" text-anchor="middle">I</text>
+  </g>
+  
+  <!-- Card 3 (front center) - GREEN - A -->
+  <g transform="translate(50, 53) rotate(5)">
+    <rect width="28" height="42" rx="3" fill="#6dd5a0" stroke="#1a1a2e" stroke-width="1.5"/>
+    <text x="14" y="26" font-family="Arial" font-size="20" font-weight="bold" fill="#1a1a2e" text-anchor="middle">A</text>
+  </g>
+</svg>

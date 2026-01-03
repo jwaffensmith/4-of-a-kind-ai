@@ -19,7 +19,7 @@ interface LocalStats {
   lastPlayed: string;
 }
 
-const STORAGE_KEY = 'connections_local_stats';
+const STORAGE_KEY = '4oak_local_stats';
 
 const getDefaultStats = (): LocalStats => ({
   sessions: [],
