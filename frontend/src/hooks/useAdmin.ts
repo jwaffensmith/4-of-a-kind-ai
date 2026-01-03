@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { adminApi, ApiError } from '../services/adminApi';
+import { adminApi } from '../services/adminApi';
+import { ApiError } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 
 export const useAdmin = () => {

@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface GameControlsProps {
   onShuffle: () => void;
   onDeselect: () => void;
@@ -8,13 +6,13 @@ interface GameControlsProps {
   disabled: boolean;
 }
 
-export const GameControls: React.FC<GameControlsProps> = ({
+export const GameControls = ({
   onShuffle,
   onDeselect,
   onSubmit,
   canSubmit,
   disabled,
-}) => {
+}: GameControlsProps) => {
   return (
     <div className="flex justify-center gap-3 my-6" role="group" aria-label="Game controls">
       <button
@@ -47,4 +45,3 @@ export const GameControls: React.FC<GameControlsProps> = ({
     </div>
   );
 };
-

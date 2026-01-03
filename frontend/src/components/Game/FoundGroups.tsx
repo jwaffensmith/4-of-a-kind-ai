@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import type { Category } from '../../types';
 
@@ -13,7 +12,7 @@ const difficultyColors = {
   hard: 'bg-difficulty-hard text-white',
 };
 
-export const FoundGroups: React.FC<FoundGroupsProps> = ({ groups }) => {
+export const FoundGroups = ({ groups }: FoundGroupsProps) => {
   if (groups.length === 0) return null;
 
   return (

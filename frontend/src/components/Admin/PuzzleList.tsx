@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { adminApi } from '../../services/adminApi';
 import type { Puzzle } from '../../types';
 
-export const PuzzleList: React.FC = () => {
+export const PuzzleList = () => {
   const [puzzles, setPuzzles] = useState<Puzzle[]>([]);
   const [filter, setFilter] = useState<'all' | 'approved' | 'pending'>('all');
 

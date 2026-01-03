@@ -12,7 +12,7 @@ export class GameRepository {
     });
   }
 
-  async findById(id: string): Promise<GameSession | null> {
+  async findById(id: string) {
     return await prisma.gameSession.findUnique({
       where: { id },
       include: {

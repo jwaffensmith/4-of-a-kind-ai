@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { statsApi } from '../../services/statsApi';
 import type { UserStats } from '../../types';
 
-export const Leaderboard: React.FC = () => {
+export const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<UserStats[]>([]);
 
   useEffect(() => {

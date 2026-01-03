@@ -1,4 +1,3 @@
-import React from 'react';
 import { WordButton } from './WordButton';
 import { motion } from 'framer-motion';
 
@@ -10,13 +9,13 @@ interface WordGridProps {
   disabled: boolean;
 }
 
-export const WordGrid: React.FC<WordGridProps> = ({
+export const WordGrid = ({
   words,
   selectedWords,
   foundGroups,
   onWordClick,
   disabled,
-}) => {
+}: WordGridProps) => {
   const isWordFound = (word: string) => {
     return foundGroups.some((group) => group.words.includes(word));
   };

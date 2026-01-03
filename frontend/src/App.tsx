@@ -11,7 +11,7 @@ import { PuzzleGenerator } from './components/Admin/PuzzleGenerator';
 import { PuzzleList } from './components/Admin/PuzzleList';
 import { useAdmin } from './hooks/useAdmin';
 
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, isLoading } = useAdmin();
 
   if (isLoading) {
@@ -23,7 +23,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
 
   return <>{children}</>;
-};
+}
 
 function App() {
   return (

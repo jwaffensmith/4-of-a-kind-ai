@@ -1,10 +1,8 @@
-import React from 'react';
-
 interface MistakesRemainingProps {
   mistakes: number;
 }
 
-export const MistakesRemaining: React.FC<MistakesRemainingProps> = ({ mistakes }) => {
+export const MistakesRemaining = ({ mistakes }: MistakesRemainingProps) => {
   return (
     <div className="flex items-center justify-center gap-2 my-4" role="status" aria-live="polite">
       <span className="text-sm font-medium text-gray-700">Mistakes remaining:</span>

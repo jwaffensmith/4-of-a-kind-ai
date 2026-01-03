@@ -2,7 +2,7 @@ import prisma from '../config/Database';
 import type { DailyPuzzle } from '@prisma/client';
 
 export class DailyPuzzleRepository {
-  async findByDate(date: string): Promise<DailyPuzzle | null> {
+  async findByDate(date: string) {
     return await prisma.dailyPuzzle.findUnique({
       where: { puzzle_date: date },
       include: { puzzle: true },

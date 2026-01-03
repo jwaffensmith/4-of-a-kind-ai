@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from 'react';
 import { gameApi } from '../services/gameApi';
 import { useLocalStats } from '../hooks/useLocalStats';
 import type { Puzzle, Category, GameResult } from '../types';

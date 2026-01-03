@@ -41,7 +41,7 @@ export class GameService {
 
   async submitGuess(sessionId: string, selectedWords: string[]) {
     const session = await this.gameRepo.findById(sessionId);
-    if (!session) {
+    if (!session || !session.puzzle) {
       throw new NotFoundError('Game session not found');
     }
 

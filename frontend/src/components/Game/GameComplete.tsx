@@ -1,23 +1,21 @@
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Confetti from 'react-confetti';
 import { motion } from 'framer-motion';
-import type { Puzzle, Category } from '../../types';
+import type { Puzzle } from '../../types';
 
 interface GameCompleteProps {
   isWon: boolean;
   puzzle: Puzzle;
-  foundGroups: Category[];
   onPlayAgain: () => void;
 }
 
-export const GameComplete: React.FC<GameCompleteProps> = ({
+export const GameComplete = ({
   isWon,
   puzzle,
-  foundGroups,
   onPlayAgain,
-}) => {
-  const [showConfetti, setShowConfetti] = React.useState(isWon);
-  const [windowSize, setWindowSize] = React.useState({ width: window.innerWidth, height: window.innerHeight });
+}: GameCompleteProps) => {
+  const [showConfetti, setShowConfetti] = useState(isWon);
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
 
   useEffect(() => {
     const handleResize = () => {

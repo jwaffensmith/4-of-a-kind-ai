@@ -3,12 +3,14 @@ type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 class Logger {
   private log(level: LogLevel, message: string, meta?: unknown): void {
     const timestamp = new Date().toISOString();
-    const logObject = {
+    const logObject: Record<string, unknown> = {
       timestamp,
       level,
       message,
-      ...(meta && { meta }),
     };
+    if (meta) {
+      logObject.meta = meta;
+    }
 
     const logString = JSON.stringify(logObject);
 

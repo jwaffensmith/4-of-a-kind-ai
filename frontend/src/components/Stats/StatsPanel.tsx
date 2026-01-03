@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { statsApi } from '../../services/statsApi';
 import type { UserStats } from '../../types';
 
-export const StatsPanel: React.FC = () => {
+export const StatsPanel = () => {
   const [username, setUsername] = useState('');
   const [stats, setStats] = useState<UserStats | null>(null);
   const [error, setError] = useState('');

@@ -14,12 +14,12 @@ export class GameController {
     this.puzzleService = new PuzzleService();
   }
 
-  getDailyPuzzle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getDailyPuzzle = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const dailyPuzzle = await this.dailyPuzzleRepo.findByDate(today);
 
-      if (dailyPuzzle) {
+      if (dailyPuzzle && dailyPuzzle.puzzle) {
         res.json(dailyPuzzle.puzzle);
       } else {
         const randomPuzzle = await this.puzzleService.getRandomApprovedPuzzle();
@@ -30,7 +30,7 @@ export class GameController {
     }
   };
 
-  getRandomPuzzle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getRandomPuzzle = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const puzzle = await this.puzzleService.getRandomApprovedPuzzle();
       res.json(puzzle);

@@ -8,8 +8,12 @@ interface Session {
   created: number;
 }
 
+// NOTE: In-memory storage is suitable for development only.
+// For production, use Redis or database-backed session storage to persist tokens across restarts.
 const activeSessions = new Map<string, Session>();
-const TOKEN_EXPIRATION_MS = 24 * 60 * 60 * 1000;
+
+// Token expiration: 7 days for development (adjust for production)
+const TOKEN_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const adminLogin = (req: Request, res: Response): void => {
   const { password } = req.body;
@@ -32,7 +36,7 @@ export const adminLogin = (req: Request, res: Response): void => {
   });
 };
 
-export const adminAuth = (req: Request, res: Response, next: NextFunction): void => {
+export const adminAuth = (req: Request, _res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
   const token = authHeader?.replace('Bearer ', '');
 

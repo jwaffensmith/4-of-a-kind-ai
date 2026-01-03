@@ -1,8 +1,7 @@
-import React from 'react';
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAdmin } from '../../hooks/useAdmin';
 
-export const AdminLayout: React.FC = () => {
+export const AdminLayout = () => {
   const { logout } = useAdmin();
   const navigate = useNavigate();
 

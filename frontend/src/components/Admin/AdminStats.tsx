@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { adminApi } from '../../services/adminApi';
-import type { AdminStats } from '../../types';
+import type { AdminStats as AdminStatsType } from '../../types';
 
-export const AdminStats: React.FC = () => {
-  const [stats, setStats] = useState<AdminStats | null>(null);
+export const AdminStats = () => {
+  const [stats, setStats] = useState<AdminStatsType | null>(null);
 
   useEffect(() => {
     loadStats();

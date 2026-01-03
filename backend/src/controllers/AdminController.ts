@@ -13,7 +13,7 @@ export class AdminController {
     this.dailyPuzzleRepo = new DailyPuzzleRepository();
   }
 
-  generatePuzzle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  generatePuzzle = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const puzzle = await this.puzzleService.generatePuzzle();
       const remainingQuota = this.puzzleService.getRemainingQuota();
@@ -27,7 +27,7 @@ export class AdminController {
     }
   };
 
-  getAllPuzzles = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getAllPuzzles = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const puzzles = await this.puzzleService.getAllPuzzles();
       res.json(puzzles);
@@ -81,7 +81,7 @@ export class AdminController {
     }
   };
 
-  getAdminStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getAdminStats = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const totalPuzzles = await prisma.puzzle.count();
       const approvedPuzzles = await prisma.puzzle.count({ where: { is_reviewed: true } });
@@ -119,7 +119,7 @@ export class AdminController {
     }
   };
 
-  getQuota = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  getQuota = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const remainingQuota = this.puzzleService.getRemainingQuota();
       res.json({ remainingQuota, maxQuota: 100 });

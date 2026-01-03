@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface WordButtonProps {
   word: string;
   isSelected: boolean;
@@ -16,14 +14,14 @@ const difficultyColors = {
   hard: 'bg-difficulty-hard text-white',
 };
 
-export const WordButton: React.FC<WordButtonProps> = ({
+export const WordButton = ({
   word,
   isSelected,
   isFound,
   difficulty,
   onClick,
   disabled,
-}) => {
+}: WordButtonProps) => {
   const baseClasses = 'px-4 py-6 rounded-lg font-semibold text-sm md:text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
   
   const stateClasses = isFound
