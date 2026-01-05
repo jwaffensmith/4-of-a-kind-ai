@@ -10,8 +10,8 @@ export const PuzzleGenerator = () => {
     setMessage('');
 
     try {
-      const result = await adminApi.generatePuzzle();
-      setMessage(`Puzzle generated! ${result.remainingQuota} generations remaining today.`);
+      await adminApi.generatePuzzle();
+      setMessage('Puzzle generated!');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to generate puzzle');
     } finally {

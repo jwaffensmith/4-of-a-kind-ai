@@ -9,6 +9,7 @@ const statsController = new StatsController();
 router.get('/:username', statsController.getUserStats);
 router.get('/leaderboard/top', statsController.getLeaderboard);
 router.post('/sync', validate(syncStatsSchema), statsController.syncLocalStats);
+router.delete('/:username', statsController.deleteUserStats);
 
 export default router;
 

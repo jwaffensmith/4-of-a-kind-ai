@@ -13,5 +13,10 @@ export const statsApi = {
       method: 'POST',
       body: JSON.stringify(stats),
     }),
+
+  deleteUserStats: (username: string) =>
+    fetchApi<{ message: string }>(`/api/stats/${username}`, {
+      method: 'DELETE',
+    }),
 };
 

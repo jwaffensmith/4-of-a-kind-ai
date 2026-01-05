@@ -47,4 +47,10 @@ export class GameRepository {
       where: { puzzle_id: puzzleId },
     });
   }
+
+  async deleteByUsername(username: string): Promise<void> {
+    await prisma.gameSession.deleteMany({
+      where: { username },
+    });
+  }
 }

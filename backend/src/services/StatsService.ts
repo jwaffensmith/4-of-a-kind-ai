@@ -105,6 +105,19 @@ export class StatsService {
     return await this.statsRepo.findByUsername(data.username);
   }
 
+  async deleteUserStats(username: string) {
+    const stats = await this.statsRepo.findByUsername(username);
+    
+    await this.gameRepo.deleteByUsername(username);
+    
+    if (stats) {
+      await this.statsRepo.delete(username);
+      logger.info('User stats deleted', { username });
+    } else {
+      logger.info('No stats to delete', { username });
+    }
+  }
+
   private calculateCurrentStreak(sessions: Array<{ completed: boolean; is_won: boolean; completed_at: Date | null }>): number {
     const sorted = sessions
       .filter((s) => s.completed && s.completed_at)

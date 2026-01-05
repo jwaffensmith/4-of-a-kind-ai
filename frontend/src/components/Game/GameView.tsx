@@ -5,6 +5,10 @@ import { FoundGroups } from './FoundGroups';
 import { MistakesRemaining } from './MistakesRemaining';
 import { GameControls } from './GameControls';
 import { GameComplete } from './GameComplete';
+import { UsernamePrompt } from './UsernamePrompt';
+import { DeleteStatsModal } from './DeleteStatsModal';
+import { UserStatsModal } from './UserStatsModal';
+import { GameNavBar } from './GameNavBar';
 import { gameApi } from '../../services/gameApi';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,6 +18,10 @@ export const GameView = () => {
   const [localLoading, setLocalLoading] = useState(true);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showOneAwayBanner, setShowOneAwayBanner] = useState(false);
+  const [showUsernamePrompt, setShowUsernamePrompt] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
+  const [puzzleIdToStart, setPuzzleIdToStart] = useState<string | null>(null);
 
   useEffect(() => {
     loadDailyPuzzle();
@@ -47,7 +55,14 @@ export const GameView = () => {
     setLocalError(null);
     try {
       const puzzle = await gameApi.getDailyPuzzle();
-      await game.startNewGame(puzzle.id);
+      
+      // Check if user has a username, if not show prompt
+      if (!game.username) {
+        setPuzzleIdToStart(puzzle.id);
+        setShowUsernamePrompt(true);
+      } else {
+        await game.startNewGame(puzzle.id);
+      }
     } catch (error) {
       console.error('Failed to load puzzle:', error);
       setLocalError(error instanceof Error ? error.message : 'Failed to load puzzle');
@@ -56,7 +71,51 @@ export const GameView = () => {
     }
   };
 
-  if (localLoading && !game.puzzle) {
+  const handleUsernameSubmit = async (username: string) => {
+    game.setUsername(username);
+    setShowUsernamePrompt(false);
+    
+    if (puzzleIdToStart) {
+      await game.startNewGame(puzzleIdToStart, username);
+      setPuzzleIdToStart(null);
+    }
+  };
+
+  const handleUsernameSkip = async () => {
+    setShowUsernamePrompt(false);
+    
+    if (puzzleIdToStart) {
+      await game.startNewGame(puzzleIdToStart);
+      setPuzzleIdToStart(null);
+    }
+  };
+
+  const handleChangeUsername = () => {
+    setShowUsernamePrompt(true);
+  };
+
+  const handleCancelUsernameChange = () => {
+    setShowUsernamePrompt(false);
+  };
+
+  const handleDeleteStats = async () => {
+    try {
+      // Close modal first
+      setShowDeleteModal(false);
+      
+      // Delete from backend and clear localStorage
+      await game.deleteUserStats();
+      
+      // Now reload the page - localStorage is already cleared
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to delete stats:', error);
+      alert('Failed to delete stats. Please try again.');
+      setShowDeleteModal(false);
+    }
+  };
+
+  if (localLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
@@ -96,7 +155,8 @@ export const GameView = () => {
     );
   }
 
-  if (!game.puzzle) {
+  // Only show main UI if we have a puzzle (username prompt will render below if needed)
+  if (!game.puzzle && !showUsernamePrompt) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="text-center">
@@ -108,13 +168,22 @@ export const GameView = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-4 pb-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-6 relative">
-          <div className="flex items-center justify-center gap-4 mb-2">
-            <img src="/logo.svg" alt="Logo" className="w-32 h-32" />
-          </div>
-          <p className="text-gray-600">Find groups of four words that share something in common</p>
+    <div className="min-h-screen bg-gray-50">
+      <GameNavBar
+        username={game.username}
+        onViewStats={() => setShowStatsModal(true)}
+        onChangeUsername={handleChangeUsername}
+        onDeleteStats={() => setShowDeleteModal(true)}
+      />
+      
+      <div className="pt-4 pb-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <header className="text-center mb-6 relative">
+            <div className="flex items-center justify-center gap-4 mb-2">
+              <img src="/logo.svg" alt="Logo" className="w-32 h-32" />
+            </div>
+            
+            <p className="text-gray-600">Find groups of four words that share something in common</p>
           
           <AnimatePresence mode="wait">
             {showOneAwayBanner && (
@@ -133,35 +202,70 @@ export const GameView = () => {
           </AnimatePresence>
         </header>
 
-        <FoundGroups groups={game.foundGroups} />
+        {game.puzzle && (
+          <>
+            <FoundGroups groups={game.foundGroups} />
 
-        <WordGrid
-          words={game.puzzle.words}
-          selectedWords={game.selectedWords}
-          foundGroups={game.foundGroups}
-          onWordClick={game.selectWord}
-          disabled={game.isLoading || game.isComplete}
-          showWrongGuess={game.showWrongGuess}
-        />
+            <WordGrid
+              words={game.puzzle.words}
+              selectedWords={game.selectedWords}
+              foundGroups={game.foundGroups}
+              onWordClick={game.selectWord}
+              disabled={game.isLoading || game.isComplete}
+              showWrongGuess={game.showWrongGuess}
+            />
 
-        <MistakesRemaining mistakes={game.mistakesRemaining} />
+            <MistakesRemaining mistakes={game.mistakesRemaining} />
 
-        <GameControls
-          onShuffle={game.shuffleWords}
-          onDeselect={game.deselectAll}
-          onSubmit={game.submitGuess}
-          canSubmit={game.selectedWords.length === 4}
-          disabled={game.isLoading || game.isComplete}
-        />
+            <GameControls
+              onShuffle={game.shuffleWords}
+              onDeselect={game.deselectAll}
+              onSubmit={game.submitGuess}
+              canSubmit={game.selectedWords.length === 4}
+              disabled={game.isLoading || game.isComplete}
+            />
 
-        {showCompleteModal && game.isComplete && (
-          <GameComplete
-            isWon={game.isWon}
-            puzzle={game.puzzle}
-            foundGroups={game.foundGroups}
-            onClose={handleCloseModal}
-          />
+            {showCompleteModal && game.isComplete && (
+              <GameComplete
+                isWon={game.isWon}
+                puzzle={game.puzzle}
+                foundGroups={game.foundGroups}
+                onClose={handleCloseModal}
+              />
+            )}
+          </>
         )}
+
+        <UsernamePrompt
+          isOpen={showUsernamePrompt}
+          onSubmit={handleUsernameSubmit}
+          onSkip={handleUsernameSkip}
+        />
+
+        {game.username && (
+          <>
+            <DeleteStatsModal
+              isOpen={showDeleteModal}
+              username={game.username}
+              onConfirm={handleDeleteStats}
+              onCancel={() => setShowDeleteModal(false)}
+            />
+            <UserStatsModal
+              isOpen={showStatsModal}
+              username={game.username}
+              onClose={() => setShowStatsModal(false)}
+            />
+          </>
+        )}
+
+        <UsernamePrompt
+          isOpen={showUsernamePrompt}
+          onSubmit={handleUsernameSubmit}
+          onSkip={handleUsernameSkip}
+          onCancel={game.username ? handleCancelUsernameChange : undefined}
+          isChanging={!!game.username}
+        />
+        </div>
       </div>
     </div>
   );

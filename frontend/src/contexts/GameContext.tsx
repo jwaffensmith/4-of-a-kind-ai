@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { gameApi } from '../services/gameApi';
+import { statsApi } from '../services/statsApi';
 import { useLocalStats } from '../hooks/useLocalStats';
 import type { GamePuzzle, Category, GameResult } from '../types';
 
@@ -16,6 +17,7 @@ interface GameState {
   startTime: number | null;
   isLoading: boolean;
   error: string | null;
+  username: string | null;
 }
 
 interface GameContextValue extends GameState {
@@ -25,37 +27,48 @@ interface GameContextValue extends GameState {
   shuffleWords: () => void;
   submitGuess: () => Promise<void>;
   revealAllAnswers: () => void;
+  setUsername: (username: string) => void;
+  clearUsername: () => void;
+  deleteUserStats: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
 
 export const GameProvider = ({ children }: { children: ReactNode }) => {
   const { addGameSession } = useLocalStats();
-  const [state, setState] = useState<GameState>({
-    puzzle: null,
-    sessionId: null,
-    selectedWords: [],
-    foundGroups: [],
-    mistakesRemaining: 4,
-    isComplete: false,
-    isWon: false,
-    showOneAway: false,
-    showWrongGuess: false,
-    startTime: null,
-    isLoading: false,
-    error: null,
+  
+  // Load username from localStorage on mount
+  const [state, setState] = useState<GameState>(() => {
+    const savedUsername = localStorage.getItem('connections_username');
+    return {
+      puzzle: null,
+      sessionId: null,
+      selectedWords: [],
+      foundGroups: [],
+      mistakesRemaining: 4,
+      isComplete: false,
+      isWon: false,
+      showOneAway: false,
+      showWrongGuess: false,
+      startTime: null,
+      isLoading: false,
+      error: null,
+      username: savedUsername,
+    };
   });
 
   const startNewGame = async (puzzleId: string, username?: string) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     
     try {
-      const response = await gameApi.startGame(puzzleId, username);
+      // Use provided username or the stored username
+      const usernameToUse = username || state.username || undefined;
+      const response = await gameApi.startGame(puzzleId, usernameToUse);
       const fullPuzzle = response.puzzle;
       
       const shuffledWords = [...fullPuzzle.words].sort(() => Math.random() - 0.5);
       
-      setState({
+      setState((prev) => ({
         puzzle: { ...fullPuzzle, words: shuffledWords },
         sessionId: response.session_id,
         selectedWords: [],
@@ -68,13 +81,57 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         startTime: Date.now(),
         isLoading: false,
         error: null,
-      });
+        username: prev.username, // Keep username in state
+      }));
     } catch (error) {
       setState((prev) => ({
         ...prev,
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to start game',
       }));
+    }
+  };
+
+  const setUsername = (username: string) => {
+    localStorage.setItem('connections_username', username);
+    setState((prev) => ({ ...prev, username }));
+  };
+
+  const clearUsername = () => {
+    localStorage.removeItem('connections_username');
+    setState((prev) => ({ ...prev, username: null }));
+  };
+
+  const deleteUserStats = async () => {
+    if (!state.username) {
+      throw new Error('No username set');
+    }
+
+    try {
+      await statsApi.deleteUserStats(state.username);
+      
+      // Clear ALL localStorage data
+      localStorage.removeItem('connections_username');
+      localStorage.removeItem('4oak_local_stats');
+      
+      // Reset entire game state to start fresh
+      setState({
+        puzzle: null,
+        sessionId: null,
+        selectedWords: [],
+        foundGroups: [],
+        mistakesRemaining: 4,
+        isComplete: false,
+        isWon: false,
+        showOneAway: false,
+        showWrongGuess: false,
+        startTime: null,
+        isLoading: false,
+        error: null,
+        username: null,
+      });
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to delete stats');
     }
   };
 
@@ -198,6 +255,9 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         shuffleWords,
         submitGuess,
         revealAllAnswers,
+        setUsername,
+        clearUsername,
+        deleteUserStats,
       }}
     >
       {children}

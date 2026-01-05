@@ -37,5 +37,15 @@ export class StatsController {
       next(error);
     }
   };
+
+  deleteUserStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { username } = req.params;
+      await this.statsService.deleteUserStats(username);
+      res.json({ message: 'User stats deleted successfully' });
+    } catch (error) {
+      next(error);
+    }
+  };
 }
 
