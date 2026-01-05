@@ -36,9 +36,6 @@ export const AdminStats = () => {
     ? ((stats.completedGames / stats.totalGames) * 100).toFixed(1)
     : '0';
 
-  const quotaUsed = 100 - stats.remainingQuota;
-  const quotaPercentage = quotaUsed;
-
   return (
     <div className="space-y-8">
       <div>
