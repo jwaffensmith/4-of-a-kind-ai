@@ -53,7 +53,7 @@ export class GameService {
       throw new BadRequestError('This puzzle has not been approved yet. Please select a different puzzle.');
     }
 
-    const categories = puzzle.categories as Category[];
+    const categories = puzzle.categories as unknown as Category[];
     if (!Array.isArray(categories) || categories.length !== GameService.TOTAL_GROUPS) {
       throw new BadRequestError('Invalid puzzle structure: must have exactly 4 categories');
     }
@@ -73,7 +73,7 @@ export class GameService {
       session_id: session.id,
       puzzle: {
         id: puzzle.id,
-        words: puzzle.words as string[],
+        words: puzzle.words as unknown as string[],
         difficulty: puzzle.difficulty,
         categories,
         ai_reasoning: puzzle.ai_reasoning,
@@ -108,11 +108,11 @@ export class GameService {
     }
 
     const typedSession = session as GameSessionWithPuzzle;
-    const categories = typedSession.puzzle.categories as Category[];
-    const correctGroups = typedSession.correct_groups as string[][];
+    const categories = typedSession.puzzle.categories as unknown as Category[];
+    const correctGroups = typedSession.correct_groups as unknown as string[][];
     const normalizedSelected = this.normalizeWords(selectedWords);
 
-    const puzzleWords = typedSession.puzzle.words as string[];
+    const puzzleWords = typedSession.puzzle.words as unknown as string[];
     const normalizedPuzzleWords = this.normalizeWords(puzzleWords);
     const invalidWords = normalizedSelected.filter(w => !normalizedPuzzleWords.includes(w));
     
@@ -146,7 +146,7 @@ export class GameService {
     selectedWords: string[],
     correctGroup: Category
   ): Promise<SubmitGuessResponse> {
-    const correctGroups = session.correct_groups as string[][];
+    const correctGroups = session.correct_groups as unknown as string[][];
     const updatedGroups = [...correctGroups, selectedWords];
     const isComplete = updatedGroups.length === GameService.TOTAL_GROUPS;
     

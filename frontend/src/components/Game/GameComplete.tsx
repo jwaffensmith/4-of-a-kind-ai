@@ -32,7 +32,6 @@ const difficultyStyles = {
 export const GameComplete = ({
   isWon,
   puzzle,
-  foundGroups,
   onClose,
 }: GameCompleteProps) => {
   const [showConfetti, setShowConfetti] = useState(isWon);

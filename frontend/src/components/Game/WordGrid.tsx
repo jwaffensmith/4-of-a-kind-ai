@@ -22,11 +22,6 @@ export const WordGrid = ({
     return foundGroups.some((group) => group.words.includes(word));
   };
 
-  const getWordDifficulty = (word: string) => {
-    const group = foundGroups.find((g) => g.words.includes(word));
-    return group?.difficulty;
-  };
-
   const remainingWords = words.filter((word) => !isWordFound(word));
 
   return (
