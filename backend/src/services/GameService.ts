@@ -164,7 +164,7 @@ export class GameService {
       updateData.completed_at = completedAt;
       updateData.time_taken = timeTaken;
 
-      await this.updateStatsOnCompletion(session, timeTaken);
+      await this.updateStatsOnCompletion(session, timeTaken, true);
     }
 
     await this.gameRepo.update(sessionId, updateData);
@@ -208,7 +208,7 @@ export class GameService {
       updateData.completed_at = completedAt;
       updateData.time_taken = timeTaken;
 
-      await this.updateStatsOnCompletion(session, timeTaken);
+      await this.updateStatsOnCompletion(session, timeTaken, false);
     }
 
     await this.gameRepo.update(sessionId, updateData);
@@ -249,7 +249,8 @@ export class GameService {
    */
   private async updateStatsOnCompletion(
     session: GameSessionWithPuzzle,
-    timeTaken: number
+    timeTaken: number,
+    hasWon: boolean
   ): Promise<void> {
     try {
       await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -281,15 +282,15 @@ export class GameService {
             where: { username: session.username },
           });
 
-          const isWin = session.is_won;
-          const isPerfect = isWin && mistakesMade === 0;
+          const mistakesMade = GameService.INITIAL_MISTAKES - session.mistakes_remaining;
+          const isPerfect = hasWon && mistakesMade === 0;
 
           const newTotalGames = (currentStats?.total_games || 0) + 1;
-          const newTotalWins = (currentStats?.total_wins || 0) + (isWin ? 1 : 0);
+          const newTotalWins = (currentStats?.total_wins || 0) + (hasWon ? 1 : 0);
           const newPerfectGames = (currentStats?.perfect_games || 0) + (isPerfect ? 1 : 0);
           
           let newStreak = 0;
-          if (isWin) {
+          if (hasWon) {
             newStreak = (currentStats?.current_streak || 0) + 1;
           }
           const newBestStreak = Math.max(
@@ -320,10 +321,10 @@ export class GameService {
             create: {
               username: session.username,
               total_games: 1,
-              total_wins: isWin ? 1 : 0,
+              total_wins: hasWon ? 1 : 0,
               perfect_games: isPerfect ? 1 : 0,
-              current_streak: isWin ? 1 : 0,
-              best_streak: isWin ? 1 : 0,
+              current_streak: hasWon ? 1 : 0,
+              best_streak: hasWon ? 1 : 0,
               avg_time_seconds: timeTaken,
               avg_mistakes: mistakesMade,
             },

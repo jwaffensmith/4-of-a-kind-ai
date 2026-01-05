@@ -4,16 +4,70 @@ import env from '../config/Env';
 import { UnauthorizedError } from '../utils/Errors';
 import logger from '../utils/Logger';
 
-interface Session {
-  created: number;
+// Token expiration: 1 day
+const TOKEN_EXPIRATION_SECONDS = 24 * 60 * 60;
+
+interface TokenPayload {
+  iat: number;
+  exp: number;
 }
 
-// NOTE: In-memory storage is suitable for development only.
-// For production, use Redis or database-backed session storage to persist tokens across restarts.
-const activeSessions = new Map<string, Session>();
+/**
+ * Creates a signed token using HMAC-SHA256
+ * Format: base64(payload).base64(signature)
+ */
+const createToken = (): string => {
+  const now = Math.floor(Date.now() / 1000);
+  const payload: TokenPayload = {
+    iat: now,
+    exp: now + TOKEN_EXPIRATION_SECONDS,
+  };
 
-// Token expiration: 7 days for development (adjust for production)
-const TOKEN_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
+  const payloadStr = JSON.stringify(payload);
+  const payloadB64 = Buffer.from(payloadStr).toString('base64url');
+  
+  const signature = crypto
+    .createHmac('sha256', env.JWT_SECRET)
+    .update(payloadB64)
+    .digest('base64url');
+
+  return `${payloadB64}.${signature}`;
+};
+
+/**
+ * Verifies and decodes a token
+ * Returns the payload if valid, null otherwise
+ */
+const verifyToken = (token: string): TokenPayload | null => {
+  try {
+    const [payloadB64, signature] = token.split('.');
+    
+    if (!payloadB64 || !signature) {
+      return null;
+    }
+
+    const expectedSignature = crypto
+      .createHmac('sha256', env.JWT_SECRET)
+      .update(payloadB64)
+      .digest('base64url');
+
+    if (signature !== expectedSignature) {
+      return null;
+    }
+
+    const payloadStr = Buffer.from(payloadB64, 'base64url').toString('utf-8');
+    const payload: TokenPayload = JSON.parse(payloadStr);
+
+    const now = Math.floor(Date.now() / 1000);
+    if (payload.exp < now) {
+      return null;
+    }
+
+    return payload;
+  } catch (error) {
+    return null;
+  }
+};
 
 export const adminLogin = (req: Request, res: Response): void => {
   const { password } = req.body;
@@ -24,15 +78,13 @@ export const adminLogin = (req: Request, res: Response): void => {
     return;
   }
 
-  const token = crypto.randomBytes(32).toString('hex');
-  const now = Date.now();
-  activeSessions.set(token, { created: now });
+  const token = createToken();
 
   logger.info('Admin logged in successfully');
 
   res.json({
     token,
-    expiresIn: TOKEN_EXPIRATION_MS / 1000,
+    expiresIn: TOKEN_EXPIRATION_SECONDS,
   });
 };
 
@@ -45,31 +97,18 @@ export const adminAuth = (req: Request, _res: Response, next: NextFunction): voi
     return;
   }
 
-  const session = activeSessions.get(token);
-  if (!session) {
-    next(new UnauthorizedError('Invalid token'));
-    return;
-  }
-
-  const now = Date.now();
-  if (now - session.created > TOKEN_EXPIRATION_MS) {
-    activeSessions.delete(token);
-    next(new UnauthorizedError('Token expired'));
+  const payload = verifyToken(token);
+  
+  if (!payload) {
+    next(new UnauthorizedError('Invalid or expired token'));
     return;
   }
 
   next();
 };
 
-export const adminLogout = (req: Request, res: Response): void => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.replace('Bearer ', '');
-
-  if (token) {
-    activeSessions.delete(token);
-    logger.info('Admin logged out');
-  }
-
+export const adminLogout = (_req: Request, res: Response): void => {
+  logger.info('Admin logged out');
   res.json({ message: 'Logged out successfully' });
 };
 

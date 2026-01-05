@@ -83,6 +83,7 @@ Create `.env` file in the root directory:
 DB_PASSWORD=your_secure_password
 CLAUDE_API_KEY=your_claude_api_key
 ADMIN_PASSWORD=your_secure_admin_password_20+_characters
+JWT_SECRET=your_random_secret_key_32+_characters
 ```
 
 3. **Start with Docker Compose**
