@@ -22,6 +22,8 @@ export class AIService {
   private dailyGenerationCount: number = 0;
   private lastResetDate: string = new Date().toISOString().split('T')[0];
   private readonly MAX_DAILY_GENERATIONS = 100;
+  private recentCategories: string[] = [];
+  private readonly MAX_RECENT_CATEGORIES = 20;
 
   constructor() {
     this.client = new Anthropic({
@@ -59,31 +61,59 @@ export class AIService {
 - 4 difficulty levels: Easy, Medium, Tricky, Hard
 
 CRITICAL REQUIREMENTS:
-1. MAXIMIZE DIVERSITY: The 4 categories in each puzzle MUST span different thematic domains and connection types. Never create puzzles where all categories are similar (e.g., all animals, all food-related, all colors).
 
-2. VARY CONNECTION TYPES: Mix different connection types:
-   - Semantic (types/categories)
-   - Functional (purpose/use)
-   - Contextual (where found/when used)
-   - Structural (word patterns)
-   - Cultural (references)
-   - Linguistic (wordplay)
+1. PRIORITIZE VARIETY AND ROTATION:
+   - Imagine you're generating one of many puzzles in a series
+   - Actively vary your category choices to create a diverse collection
+   - Don't default to the easiest or most obvious connections
+   - Push yourself to explore different corners of knowledge and culture
+   - Each category should make solvers think "Oh, that's clever!" when revealed
 
-3. GOOD DIVERSITY EXAMPLE:
-   - Easy: Types of fish (semantic)
-   - Medium: Things you plug in (functional)
-   - Tricky: Netflix shows (cultural)
-   - Hard: Words that can follow "fire" (structural)
+2. MAXIMIZE DIVERSITY ACROSS DOMAINS:
+   The 4 categories MUST span completely different thematic domains:
+   - NEVER use similar domains (e.g., all nature, all household, all actions, all descriptors)
+   - Mix abstract and concrete concepts
+   - Combine different fields: science, arts, history, pop culture, language, geography, etc.
 
-4. BAD EXAMPLE (avoid):
-   - Easy: Types of birds (all nature)
-   - Medium: Types of trees
-   - Tricky: Types of flowers
-   - Hard: Types of fish
+3. VARY CONNECTION TYPES (use all 4 different types per puzzle):
+   - Semantic (categories/classifications)
+   - Functional (what they do/how they're used)
+   - Contextual (where/when found)
+   - Structural (word patterns/wordplay)
+   - Cultural (references/proper nouns)
+   - Linguistic (language features)
 
-5. Each puzzle should feel distinct from previous ones
-6. Words should have potential ambiguity (could fit multiple categories)
-7. Provide clear, insightful reasoning for each category connection
+4. INSPIRATION - CREATIVE CATEGORY TYPES TO EXPLORE:
+   - Historical figures, events, or eras
+   - Scientific concepts, elements, or phenomena
+   - Literary works, characters, or authors
+   - Musical terms, composers, or genres
+   - Geographic locations or features
+   - Mathematical or logical concepts
+   - Mythology or folklore references
+   - Word structure patterns (rhymes, anagrams, prefixes, suffixes)
+   - Pop culture references (films, TV, games)
+   - Professional jargon or technical terms
+   - Abstract concepts or emotions
+   
+   Example puzzles (FOR CONCEPT ONLY - NEVER COPY):
+   Set 1: Card suits, Musical keys, Greek letters, Words that follow "green"
+   Set 2: US presidents, Constellations, Words ending in "-ology", Poker hands
+   Set 3: Shakespeare plays, Programming languages, Minerals, Words with 3 vowels in a row
+
+5. ENSURE WORD AMBIGUITY:
+   - Each word should plausibly fit into 2+ categories
+   - Avoid obvious groupings where all 4 words clearly belong together
+   - Create misdirection through clever word choice
+
+6. THINK STEP-BY-STEP BEFORE GENERATING:
+   Before creating categories, ask yourself:
+   - Are these 4 categories truly from different domains?
+   - Have I used this type of category recently? If yes, pick something different.
+   - Would this puzzle stand out in a collection of 50+ puzzles?
+   - Does each category use a different connection type?
+   - Am I defaulting to easy, obvious groupings? If yes, push further.
+   - Would this puzzle surprise and delight solvers?
 
 Return your response as valid JSON with this exact structure:
 {
@@ -101,13 +131,28 @@ Return your response as valid JSON with this exact structure:
     try {
       logger.info('Generating puzzle with Claude API');
 
+      const varietyPrompts = [
+        'Create a puzzle that explores unexpected connections from different knowledge domains.',
+        'Generate a puzzle that would surprise someone who has played many word games.',
+        'Design a puzzle that showcases creative and diverse category types.',
+        'Build a puzzle with categories from completely different areas of human knowledge.',
+        'Craft a puzzle where each category feels distinct and memorable.',
+      ];
+      const randomPrompt = varietyPrompts[Math.floor(Math.random() * varietyPrompts.length)];
+
+      let avoidanceMessage = '';
+      if (this.recentCategories.length > 0) {
+        avoidanceMessage = `\n\nRECENTLY USED CATEGORIES (DO NOT REPEAT THESE OR SIMILAR THEMES):\n${this.recentCategories.join(', ')}\n\nUse completely different category types from this list.`;
+      }
+
       const response = await this.client.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
+        temperature: 1.0,
         messages: [
           {
             role: 'user',
-            content: 'Generate a new word connections puzzle with maximum category diversity. Ensure the 4 categories span different domains and use different connection types.',
+            content: `Generate a highly original word connections puzzle. ${randomPrompt} Ensure maximum variety - the 4 categories must span completely different thematic domains and connection types. Rotate through different topic areas to keep puzzles fresh and interesting.${avoidanceMessage}`,
           },
         ],
         system: systemPrompt,
@@ -147,9 +192,17 @@ Return your response as valid JSON with this exact structure:
 
       const overallDifficulty = this.calculateOverallDifficulty(categories);
 
+      categories.forEach(cat => {
+        this.recentCategories.push(cat.name);
+      });
+      if (this.recentCategories.length > this.MAX_RECENT_CATEGORIES) {
+        this.recentCategories = this.recentCategories.slice(-this.MAX_RECENT_CATEGORIES);
+      }
+
       this.dailyGenerationCount++;
       logger.info('Puzzle generated successfully', {
         remainingGenerations: this.getRemainingGenerations(),
+        recentCategoriesCount: this.recentCategories.length,
       });
 
       return {
@@ -184,5 +237,3 @@ Return your response as valid JSON with this exact structure:
     return 'hard';
   }
 }
-
-

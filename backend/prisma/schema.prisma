@@ -41,7 +41,7 @@ model GameSession {
   completed_at        DateTime?
   time_taken          Int?
   
-  puzzle              Puzzle    @relation(fields: [puzzle_id], references: [id])
+  puzzle              Puzzle    @relation(fields: [puzzle_id], references: [id], onDelete: Cascade)
   
   @@index([puzzle_id])
   @@index([username])
@@ -71,7 +71,7 @@ model DailyPuzzle {
   puzzle_id   String
   created_at  DateTime @default(now())
   
-  puzzle      Puzzle   @relation(fields: [puzzle_id], references: [id])
+  puzzle      Puzzle   @relation(fields: [puzzle_id], references: [id], onDelete: Cascade)
   
   @@index([puzzle_id])
   @@map("daily_puzzle")
@@ -84,7 +84,7 @@ model AdminLog {
   details    Json
   created_at DateTime @default(now())
   
-  puzzle     Puzzle?  @relation(fields: [puzzle_id], references: [id])
+  puzzle     Puzzle?  @relation(fields: [puzzle_id], references: [id], onDelete: SetNull)
   
   @@index([created_at])
   @@map("admin_log")

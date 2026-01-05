@@ -2,7 +2,7 @@ import { PuzzleRepository } from '../repositories/PuzzleRepository';
 import { AIService } from './AIService';
 import prisma from '../config/Database';
 import logger from '../utils/Logger';
-import { NotFoundError } from '../utils/Errors';
+import { NotFoundError, BadRequestError } from '../utils/Errors';
 
 export class PuzzleService {
   private puzzleRepo: PuzzleRepository;
@@ -62,6 +62,12 @@ export class PuzzleService {
     const puzzle = await this.puzzleRepo.findById(id);
     if (!puzzle) {
       throw new NotFoundError('Puzzle not found');
+    }
+
+    if (puzzle.times_played > 0) {
+      throw new BadRequestError(
+        `Cannot delete puzzle that has been played ${puzzle.times_played} time(s). This preserves user stats and game history.`
+      );
     }
 
     await prisma.adminLog.create({

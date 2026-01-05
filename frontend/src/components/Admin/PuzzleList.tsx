@@ -37,6 +37,24 @@ export const PuzzleList = () => {
     }
   };
 
+  const handleDelete = async (id: string, puzzle: Puzzle) => {
+    if (puzzle.times_played > 0) {
+      alert(`Cannot delete this puzzle - it has been played ${puzzle.times_played} time(s). This preserves user stats and game history.`);
+      return;
+    }
+    if (!confirm('Are you sure you want to delete this approved puzzle?')) {
+      return;
+    }
+    try {
+      await adminApi.rejectPuzzle(id);
+      loadPuzzles();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete puzzle';
+      alert(errorMessage);
+      console.error('Failed to delete puzzle:', error);
+    }
+  };
+
   const filteredPuzzles = puzzles.filter((p) => {
     if (filter === 'approved') return p.is_reviewed;
     if (filter === 'pending') return !p.is_reviewed;
@@ -78,9 +96,12 @@ export const PuzzleList = () => {
                 <p className="text-sm text-gray-600">
                   Status: {puzzle.is_reviewed ? '✅ Approved' : '⏳ Pending'}
                 </p>
+                <p className="text-sm text-gray-600">
+                  Played: {puzzle.times_played} time(s)
+                </p>
               </div>
               <div className="flex gap-2">
-                {!puzzle.is_reviewed && (
+                {!puzzle.is_reviewed ? (
                   <>
                     <button
                       onClick={() => handleApprove(puzzle.id)}
@@ -95,6 +116,22 @@ export const PuzzleList = () => {
                       Reject
                     </button>
                   </>
+                ) : (
+                  <button
+                    onClick={() => handleDelete(puzzle.id, puzzle)}
+                    className={`px-4 py-2 rounded ${
+                      puzzle.times_played > 0
+                        ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
+                        : 'bg-red-600 text-white hover:bg-red-700'
+                    }`}
+                    title={
+                      puzzle.times_played > 0
+                        ? `Cannot delete - played ${puzzle.times_played} time(s)`
+                        : 'Delete this puzzle'
+                    }
+                  >
+                    Delete
+                  </button>
                 )}
               </div>
             </div>

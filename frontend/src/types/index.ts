@@ -5,6 +5,10 @@ export interface Puzzle {
   ai_reasoning: string;
   difficulty: string;
   is_reviewed: boolean;
+  times_played: number;
+  avg_completion_time?: number | null;
+  avg_mistakes?: number | null;
+  created_at: string;
 }
 
 export interface GamePuzzle {
