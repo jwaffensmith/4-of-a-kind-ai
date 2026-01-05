@@ -5,6 +5,7 @@ interface WordButtonProps {
   difficulty?: string;
   onClick: () => void;
   disabled: boolean;
+  showWrongGuess: boolean;
 }
 
 const difficultyColors = {
@@ -21,21 +22,26 @@ export const WordButton = ({
   difficulty,
   onClick,
   disabled,
+  showWrongGuess,
 }: WordButtonProps) => {
-  const baseClasses = 'px-4 py-6 rounded-lg font-semibold text-sm md:text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
+  const isAnimating = showWrongGuess && isSelected;
+  
+  const baseClasses = `w-full h-20 rounded-lg font-semibold text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center justify-center ${isAnimating ? '' : 'transition-all duration-200'}`;
   
   const stateClasses = isFound
     ? `${difficultyColors[difficulty as keyof typeof difficultyColors] || 'bg-gray-400'} cursor-default`
     : isSelected
-    ? 'bg-gray-800 text-white scale-95'
-    : 'bg-gray-200 hover:bg-gray-300 text-gray-900 hover:scale-105';
+    ? 'bg-gray-800 text-white scale-95 cursor-pointer'
+    : 'bg-gray-200 hover:bg-gray-300 text-gray-900 hover:scale-105 cursor-pointer';
+
+  const animationClasses = isAnimating ? 'animate-shake' : '';
 
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled || isFound}
-      className={`${baseClasses} ${stateClasses}`}
+      className={`${baseClasses} ${stateClasses} ${animationClasses}`}
       aria-pressed={isSelected}
       aria-label={`Word: ${word}${isSelected ? ', selected' : ''}${isFound ? ', found' : ''}`}
     >

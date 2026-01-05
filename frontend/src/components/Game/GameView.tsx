@@ -12,10 +12,35 @@ export const GameView = () => {
   const game = useGame();
   const [localError, setLocalError] = useState<string | null>(null);
   const [localLoading, setLocalLoading] = useState(true);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showOneAwayBanner, setShowOneAwayBanner] = useState(false);
 
   useEffect(() => {
     loadDailyPuzzle();
   }, []);
+
+  useEffect(() => {
+    if (game.isComplete) {
+      setShowCompleteModal(true);
+    }
+  }, [game.isComplete]);
+
+  useEffect(() => {
+    if (game.showOneAway) {
+      setShowOneAwayBanner(true);
+      const timer = setTimeout(() => {
+        setShowOneAwayBanner(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [game.showOneAway]);
+
+  const handleCloseModal = () => {
+    if (!game.isWon) {
+      game.revealAllAnswers();
+    }
+    setShowCompleteModal(false);
+  };
 
   const loadDailyPuzzle = async () => {
     setLocalLoading(true);
@@ -29,10 +54,6 @@ export const GameView = () => {
     } finally {
       setLocalLoading(false);
     }
-  };
-
-  const handlePlayAgain = () => {
-    loadDailyPuzzle();
   };
 
   if (localLoading && !game.puzzle) {
@@ -89,27 +110,28 @@ export const GameView = () => {
   return (
     <div className="min-h-screen bg-gray-50 pt-4 pb-8 px-4">
       <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-10">
+        <header className="text-center mb-6 relative">
           <div className="flex items-center justify-center gap-4 mb-2">
             <img src="/logo.svg" alt="Logo" className="w-32 h-32" />
           </div>
           <p className="text-gray-600">Find groups of four words that share something in common</p>
+          
+          <AnimatePresence mode="wait">
+            {showOneAwayBanner && (
+              <motion.div
+                key="one-away"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="absolute left-1/2 -translate-x-1/2 -bottom-4 py-2.5 px-8 bg-gray-900 border-2 border-gray-900 rounded-lg shadow-lg"
+                role="alert"
+              >
+                <p className="text-white text-base font-bold">One away!</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </header>
-
-        <AnimatePresence mode="wait">
-          {game.showOneAway && (
-            <motion.div
-              key="one-away"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-4 p-3 bg-yellow-100 border-2 border-yellow-400 rounded-lg text-center"
-              role="alert"
-            >
-              <p className="text-yellow-800 font-semibold">One away! Try again.</p>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         <FoundGroups groups={game.foundGroups} />
 
@@ -119,6 +141,7 @@ export const GameView = () => {
           foundGroups={game.foundGroups}
           onWordClick={game.selectWord}
           disabled={game.isLoading || game.isComplete}
+          showWrongGuess={game.showWrongGuess}
         />
 
         <MistakesRemaining mistakes={game.mistakesRemaining} />
@@ -131,11 +154,12 @@ export const GameView = () => {
           disabled={game.isLoading || game.isComplete}
         />
 
-        {game.isComplete && (
+        {showCompleteModal && game.isComplete && (
           <GameComplete
             isWon={game.isWon}
             puzzle={game.puzzle}
-            onPlayAgain={handlePlayAgain}
+            foundGroups={game.foundGroups}
+            onClose={handleCloseModal}
           />
         )}
       </div>

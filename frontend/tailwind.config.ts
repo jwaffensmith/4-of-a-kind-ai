@@ -6,10 +6,10 @@ export default {
     extend: {
       colors: {
         difficulty: {
-          easy: '#F9DF6D',
-          medium: '#9FD661',
-          tricky: '#74A9F7',
-          hard: '#C589E8',
+          easy: '#f9ca24',
+          medium: '#6dd5a0',
+          tricky: '#4a90e2',
+          hard: '#a29bfe',
         },
       },
       keyframes: {

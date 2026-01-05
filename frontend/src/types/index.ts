@@ -7,6 +7,14 @@ export interface Puzzle {
   is_reviewed: boolean;
 }
 
+export interface GamePuzzle {
+  id: string;
+  words: string[];
+  categories: Category[];
+  ai_reasoning: string;
+  difficulty: string;
+}
+
 export interface Category {
   name: string;
   words: string[];
@@ -16,11 +24,7 @@ export interface Category {
 
 export interface GameSession {
   session_id: string;
-  puzzle: {
-    id: string;
-    words: string[];
-    difficulty: string;
-  };
+  puzzle: GamePuzzle;
 }
 
 export interface GameResult {

@@ -5,28 +5,47 @@ interface FoundGroupsProps {
   groups: Category[];
 }
 
-const difficultyColors = {
-  easy: 'bg-difficulty-easy text-black',
-  medium: 'bg-difficulty-medium text-black',
-  tricky: 'bg-difficulty-tricky text-white',
-  hard: 'bg-difficulty-hard text-white',
+const difficultyStyles = {
+  easy: {
+    backgroundColor: '#f9ca24',
+    color: '#000000',
+  },
+  medium: {
+    backgroundColor: '#6dd5a0',
+    color: '#000000',
+  },
+  tricky: {
+    backgroundColor: '#4a90e2',
+    color: '#000000',
+  },
+  hard: {
+    backgroundColor: '#a29bfe',
+    color: '#000000',
+  },
 };
 
 export const FoundGroups = ({ groups }: FoundGroupsProps) => {
   if (groups.length === 0) return null;
 
   return (
-    <div className="space-y-2 max-w-2xl mx-auto mb-6" role="region" aria-label="Found categories">
+    <div className="space-y-2 max-w-2xl mx-auto mb-3" role="region" aria-label="Found categories">
       {groups.map((group, index) => (
         <motion.div
           key={group.name}
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: index * 0.1 }}
-          className={`rounded-lg p-4 ${difficultyColors[group.difficulty]}`}
+          initial={{ opacity: 0, scale: 0.9, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ 
+            duration: 0.5, 
+            delay: index * 0.1,
+            type: "spring",
+            stiffness: 200,
+            damping: 20
+          }}
+          className="rounded-lg p-4 text-center"
+          style={difficultyStyles[group.difficulty as keyof typeof difficultyStyles]}
         >
-          <h3 className="font-bold text-sm md:text-base mb-1">{group.name}</h3>
-          <p className="text-xs md:text-sm opacity-90">{group.words.join(', ')}</p>
+          <h3 className="font-bold text-base md:text-lg mb-2 uppercase tracking-wide">{group.name}</h3>
+          <p className="text-sm md:text-base font-medium uppercase">{group.words.join(', ')}</p>
         </motion.div>
       ))}
     </div>

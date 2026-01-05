@@ -1,1 +1,52 @@
 @import "tailwindcss";
+
+@keyframes shake-and-dim {
+  0% { 
+    transform: translateX(0); 
+    opacity: 1;
+  }
+  10% { 
+    transform: translateX(-8px); 
+    opacity: 0.4;
+  }
+  20% { 
+    transform: translateX(8px); 
+    opacity: 0.4;
+  }
+  30% { 
+    transform: translateX(-8px); 
+    opacity: 0.4;
+  }
+  40% { 
+    transform: translateX(8px); 
+    opacity: 0.4;
+  }
+  50% { 
+    transform: translateX(-8px); 
+    opacity: 0.4;
+  }
+  60% { 
+    transform: translateX(8px); 
+    opacity: 0.4;
+  }
+  70% { 
+    transform: translateX(-8px); 
+    opacity: 0.4;
+  }
+  80% { 
+    transform: translateX(-4px); 
+    opacity: 0.6;
+  }
+  90% { 
+    transform: translateX(4px); 
+    opacity: 0.8;
+  }
+  100% { 
+    transform: translateX(0); 
+    opacity: 1;
+  }
+}
+
+.animate-shake {
+  animation: shake-and-dim 0.8s ease-in-out;
+}

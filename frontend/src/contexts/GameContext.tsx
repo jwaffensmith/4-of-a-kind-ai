@@ -1,10 +1,10 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
 import { gameApi } from '../services/gameApi';
 import { useLocalStats } from '../hooks/useLocalStats';
-import type { Puzzle, Category, GameResult } from '../types';
+import type { GamePuzzle, Category, GameResult } from '../types';
 
 interface GameState {
-  puzzle: Puzzle | null;
+  puzzle: GamePuzzle | null;
   sessionId: string | null;
   selectedWords: string[];
   foundGroups: Category[];
@@ -12,6 +12,7 @@ interface GameState {
   isComplete: boolean;
   isWon: boolean;
   showOneAway: boolean;
+  showWrongGuess: boolean;
   startTime: number | null;
   isLoading: boolean;
   error: string | null;
@@ -23,6 +24,7 @@ interface GameContextValue extends GameState {
   deselectAll: () => void;
   shuffleWords: () => void;
   submitGuess: () => Promise<void>;
+  revealAllAnswers: () => void;
 }
 
 const GameContext = createContext<GameContextValue | undefined>(undefined);
@@ -38,6 +40,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     isComplete: false,
     isWon: false,
     showOneAway: false,
+    showWrongGuess: false,
     startTime: null,
     isLoading: false,
     error: null,
@@ -48,10 +51,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       const response = await gameApi.startGame(puzzleId, username);
-      const fullPuzzle = await gameApi.getDailyPuzzle();
+      const fullPuzzle = response.puzzle;
+      
+      const shuffledWords = [...fullPuzzle.words].sort(() => Math.random() - 0.5);
       
       setState({
-        puzzle: fullPuzzle,
+        puzzle: { ...fullPuzzle, words: shuffledWords },
         sessionId: response.session_id,
         selectedWords: [],
         foundGroups: [],
@@ -59,6 +64,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         isComplete: false,
         isWon: false,
         showOneAway: false,
+        showWrongGuess: false,
         startTime: Date.now(),
         isLoading: false,
         error: null,
@@ -83,12 +89,12 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         ? [...prev.selectedWords, word]
         : prev.selectedWords;
 
-      return { ...prev, selectedWords: newSelected, showOneAway: false };
+      return { ...prev, selectedWords: newSelected, showOneAway: false, showWrongGuess: false };
     });
   };
 
   const deselectAll = () => {
-    setState((prev) => ({ ...prev, selectedWords: [], showOneAway: false }));
+    setState((prev) => ({ ...prev, selectedWords: [], showOneAway: false, showWrongGuess: false }));
   };
 
   const shuffleWords = () => {
@@ -116,7 +122,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
   const submitGuess = async () => {
     if (!state.sessionId || state.selectedWords.length !== 4) return;
 
-    setState((prev) => ({ ...prev, isLoading: true, showOneAway: false }));
+    setState((prev) => ({ ...prev, isLoading: true, showOneAway: false, showWrongGuess: false }));
 
     try {
       const result: GameResult = await gameApi.submitGuess(
@@ -143,13 +149,20 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setState((prev) => ({
           ...prev,
-          selectedWords: [],
           mistakesRemaining: result.mistakes_remaining,
           showOneAway: result.is_one_away || false,
+          showWrongGuess: true,
           isComplete: result.is_complete,
           isWon: result.is_won,
           isLoading: false,
         }));
+
+        setTimeout(() => {
+          setState((prev) => ({
+            ...prev,
+            showWrongGuess: false,
+          }));
+        }, 800);
 
         if (result.is_complete && state.startTime) {
           const timeTaken = Math.floor((Date.now() - state.startTime) / 1000);
@@ -166,6 +179,15 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const revealAllAnswers = () => {
+    if (!state.puzzle || state.isWon) return;
+    
+    setState((prev) => ({
+      ...prev,
+      foundGroups: prev.puzzle?.categories || [],
+    }));
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -175,6 +197,7 @@ export const GameProvider = ({ children }: { children: ReactNode }) => {
         deselectAll,
         shuffleWords,
         submitGuess,
+        revealAllAnswers,
       }}
     >
       {children}
