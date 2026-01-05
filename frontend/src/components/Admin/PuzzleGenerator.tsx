@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { adminApi } from '../../services/adminApi';
 
+type DifficultyOption = 'auto' | 'easy' | 'medium' | 'hard';
+
 export const PuzzleGenerator = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [message, setMessage] = useState('');
+  const [selectedDifficulty, setSelectedDifficulty] = useState<DifficultyOption>('auto');
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     setMessage('');
 
     try {
-      await adminApi.generatePuzzle();
-      setMessage('Puzzle generated!');
+      const targetDifficulty = selectedDifficulty === 'auto' ? undefined : selectedDifficulty;
+      const result = await adminApi.generatePuzzle(targetDifficulty);
+      setMessage(`Puzzle generated with difficulty: ${result.puzzle.difficulty}!`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Failed to generate puzzle');
     } finally {
@@ -26,6 +30,34 @@ export const PuzzleGenerator = () => {
         <p className="mb-4 text-gray-700">
           Generate a new AI-powered puzzle with diverse categories.
         </p>
+        
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
+            Target Difficulty
+          </label>
+          <div className="flex flex-wrap gap-3">
+            {(['auto', 'easy', 'medium', 'hard'] as DifficultyOption[]).map((difficulty) => (
+              <button
+                key={difficulty}
+                onClick={() => setSelectedDifficulty(difficulty)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedDifficulty === difficulty
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {difficulty === 'auto' ? 'Auto (AI decides)' : difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-sm text-gray-500">
+            {selectedDifficulty === 'auto' 
+              ? 'AI will automatically determine the best difficulty distribution'
+              : `AI will target ${selectedDifficulty} difficulty with appropriate category distribution`
+            }
+          </p>
+        </div>
+
         <button
           onClick={handleGenerate}
           disabled={isGenerating}

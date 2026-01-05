@@ -24,3 +24,7 @@ export const syncStatsSchema = z.object({
   avg_mistakes: z.number().optional(),
 });
 
+export const generatePuzzleSchema = z.object({
+  targetDifficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+});
+

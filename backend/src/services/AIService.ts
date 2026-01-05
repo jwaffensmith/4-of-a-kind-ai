@@ -6,7 +6,7 @@ import { TooManyRequestsError, InternalServerError } from '../utils/Errors';
 interface PuzzleCategory {
   name: string;
   words: string[];
-  difficulty: 'easy' | 'medium' | 'tricky' | 'hard';
+  difficulty: 'easy' | 'medium' | 'hard';
   reasoning: string;
 }
 
@@ -45,7 +45,7 @@ export class AIService {
     return this.MAX_DAILY_GENERATIONS - this.dailyGenerationCount;
   }
 
-  async generatePuzzle(): Promise<GeneratedPuzzle> {
+  async generatePuzzle(targetDifficulty?: 'easy' | 'medium' | 'hard'): Promise<GeneratedPuzzle> {
     this.checkAndResetDailyLimit();
 
     if (this.dailyGenerationCount >= this.MAX_DAILY_GENERATIONS) {
@@ -55,10 +55,10 @@ export class AIService {
       );
     }
 
-    const systemPrompt = `You are a puzzle generator creating word connection puzzles. Each puzzle has:
+    let systemPrompt = `You are a puzzle generator creating word connection puzzles. Each puzzle has:
 - 16 words divided into 4 hidden groups of 4 words each
 - Each group shares a specific connection or theme
-- 4 difficulty levels: Easy, Medium, Tricky, Hard
+- 3 difficulty levels: Easy, Medium, Hard
 
 CRITICAL REQUIREMENTS:
 
@@ -95,11 +95,6 @@ CRITICAL REQUIREMENTS:
    - Pop culture references (films, TV, games)
    - Professional jargon or technical terms
    - Abstract concepts or emotions
-   
-   Example puzzles (FOR CONCEPT ONLY - NEVER COPY):
-   Set 1: Card suits, Musical keys, Greek letters, Words that follow "green"
-   Set 2: US presidents, Constellations, Words ending in "-ology", Poker hands
-   Set 3: Shakespeare plays, Programming languages, Minerals, Words with 3 vowels in a row
 
 5. ENSURE WORD AMBIGUITY:
    - Each word should plausibly fit into 2+ categories
@@ -109,7 +104,6 @@ CRITICAL REQUIREMENTS:
 6. THINK STEP-BY-STEP BEFORE GENERATING:
    Before creating categories, ask yourself:
    - Are these 4 categories truly from different domains?
-   - Have I used this type of category recently? If yes, pick something different.
    - Would this puzzle stand out in a collection of 50+ puzzles?
    - Does each category use a different connection type?
    - Am I defaulting to easy, obvious groupings? If yes, push further.
@@ -121,12 +115,49 @@ Return your response as valid JSON with this exact structure:
     {
       "name": "Category name",
       "words": ["WORD1", "WORD2", "WORD3", "WORD4"],
-      "difficulty": "easy|medium|tricky|hard",
+      "difficulty": "easy|medium|hard",
       "reasoning": "Brief explanation of the connection"
     }
   ],
   "overall_reasoning": "Explanation of how this puzzle achieves diversity across domains and connection types"
 }`;
+
+    if (targetDifficulty) {
+      const difficultyGuidance = {
+        easy: `
+
+DIFFICULTY TARGET: EASY
+Create a puzzle with overall EASY difficulty by distributing category difficulties as follows:
+- Aim for 2-3 EASY categories (straightforward, common knowledge connections)
+- Include 1-2 MEDIUM categories (slightly less obvious but accessible)
+- Include 0 HARD categories
+- The puzzle should be approachable and solvable by casual players
+- Focus on familiar concepts, common groupings, and clear connections`,
+
+        medium: `
+
+DIFFICULTY TARGET: MEDIUM
+Create a puzzle with overall MEDIUM difficulty by distributing category difficulties as follows:
+- Aim for 1-2 EASY categories (accessible entry points)
+- Include 2 MEDIUM categories (core of the puzzle)
+- Include 0-1 HARD category (subtle or specialized connection)
+- Balance accessibility with challenge
+- Mix familiar and less obvious connections`,
+
+        hard: `
+
+DIFFICULTY TARGET: HARD
+Create a puzzle with overall HARD difficulty by distributing category difficulties as follows:
+- Aim for 0-1 EASY category (at most one straightforward group)
+- Include 1 MEDIUM category (provides one accessible entry point)
+- Include 2-3 HARD categories (specialized knowledge, obscure connections, or very subtle wordplay)
+- Maximize ambiguity - every word should plausibly fit multiple categories
+- Use advanced vocabulary, specialized knowledge, or highly subtle patterns
+- This should challenge even experienced puzzle solvers`,
+      };
+
+      systemPrompt += difficultyGuidance[targetDifficulty];
+    }
 
     try {
       logger.info('Generating puzzle with Claude API');
@@ -145,6 +176,14 @@ Return your response as valid JSON with this exact structure:
         avoidanceMessage = `\n\nRECENTLY USED CATEGORIES (DO NOT REPEAT THESE OR SIMILAR THEMES):\n${this.recentCategories.join(', ')}\n\nUse completely different category types from this list.`;
       }
 
+      let userPrompt = `Generate a highly original word connections puzzle. ${randomPrompt} Ensure maximum variety - the 4 categories must span completely different thematic domains and connection types. Rotate through different topic areas to keep puzzles fresh and interesting.`;
+      
+      if (targetDifficulty) {
+        userPrompt += ` TARGET DIFFICULTY: ${targetDifficulty.toUpperCase()}. Follow the difficulty distribution guidelines specified in the system prompt.`;
+      }
+      
+      userPrompt += avoidanceMessage;
+
       const response = await this.client.messages.create({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 2000,
@@ -152,7 +191,7 @@ Return your response as valid JSON with this exact structure:
         messages: [
           {
             role: 'user',
-            content: `Generate a highly original word connections puzzle. ${randomPrompt} Ensure maximum variety - the 4 categories must span completely different thematic domains and connection types. Rotate through different topic areas to keep puzzles fresh and interesting.${avoidanceMessage}`,
+            content: userPrompt,
           },
         ],
         system: systemPrompt,
@@ -174,7 +213,7 @@ Return your response as valid JSON with this exact structure:
       const categories: PuzzleCategory[] = parsedResponse.categories.map((cat: {
         name: string;
         words: string[];
-        difficulty: 'easy' | 'medium' | 'tricky' | 'hard';
+        difficulty: 'easy' | 'medium' | 'hard';
         reasoning: string;
       }) => {
         words.push(...cat.words);
@@ -190,7 +229,7 @@ Return your response as valid JSON with this exact structure:
         throw new InternalServerError('Generated puzzle does not have exactly 16 words');
       }
 
-      const overallDifficulty = this.calculateOverallDifficulty(categories);
+      const overallDifficulty = targetDifficulty || this.calculateOverallDifficulty(categories);
 
       categories.forEach(cat => {
         this.recentCategories.push(cat.name);
@@ -203,6 +242,9 @@ Return your response as valid JSON with this exact structure:
       logger.info('Puzzle generated successfully', {
         remainingGenerations: this.getRemainingGenerations(),
         recentCategoriesCount: this.recentCategories.length,
+        targetDifficulty: targetDifficulty || 'auto',
+        calculatedDifficulty: this.calculateOverallDifficulty(categories),
+        finalDifficulty: overallDifficulty,
       });
 
       return {
@@ -224,16 +266,14 @@ Return your response as valid JSON with this exact structure:
     const difficultyScores = {
       easy: 1,
       medium: 2,
-      tricky: 3,
-      hard: 4,
+      hard: 3,
     };
 
     const avgScore =
       categories.reduce((sum, cat) => sum + difficultyScores[cat.difficulty], 0) / categories.length;
 
     if (avgScore <= 1.5) return 'easy';
-    if (avgScore <= 2.5) return 'medium';
-    if (avgScore <= 3.5) return 'tricky';
+    if (avgScore <= 2.25) return 'medium';
     return 'hard';
   }
 }

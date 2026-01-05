@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { AdminController } from '../controllers/AdminController';
 import { adminLogin, adminAuth, adminLogout } from '../middleware/AdminMiddleware';
 import { validate } from '../middleware/ValidationMiddleware';
-import { loginSchema, setDailyPuzzleSchema } from '../validators/AdminValidator';
+import { loginSchema, setDailyPuzzleSchema, generatePuzzleSchema } from '../validators/AdminValidator';
 
 const router = Router();
 const adminController = new AdminController();
@@ -10,7 +10,7 @@ const adminController = new AdminController();
 router.post('/login', validate(loginSchema), adminLogin);
 router.post('/logout', adminAuth, adminLogout);
 
-router.post('/puzzle/generate', adminAuth, adminController.generatePuzzle);
+router.post('/puzzle/generate', adminAuth, validate(generatePuzzleSchema), adminController.generatePuzzle);
 router.get('/puzzle/all', adminAuth, adminController.getAllPuzzles);
 router.put('/puzzle/:id/approve', adminAuth, adminController.approvePuzzle);
 router.delete('/puzzle/:id/reject', adminAuth, adminController.rejectPuzzle);
