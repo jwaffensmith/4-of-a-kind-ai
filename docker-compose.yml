@@ -6,10 +6,6 @@ services:
     container_name: 4oak_db
     env_file:
       - ./backend/.env
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: 4oak
     ports:
       - "5432:5432"
     volumes:
