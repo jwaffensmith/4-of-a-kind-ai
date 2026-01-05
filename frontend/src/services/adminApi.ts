@@ -18,12 +18,13 @@ export const adminApi = {
       },
     }),
 
-  generatePuzzle: () =>
+  generatePuzzle: (targetDifficulty?: 'easy' | 'medium' | 'hard') =>
     fetchApi<{ puzzle: Puzzle; remainingQuota: number }>('/api/admin/puzzle/generate', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${getToken()}`,
       },
+      body: JSON.stringify(targetDifficulty ? { targetDifficulty } : {}),
     }),
 
   getAllPuzzles: () =>

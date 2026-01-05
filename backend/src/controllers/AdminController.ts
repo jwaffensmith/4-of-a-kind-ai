@@ -3,6 +3,7 @@ import { PuzzleService } from '../services/PuzzleService';
 import { DailyPuzzleRepository } from '../repositories/DailyPuzzleRepository';
 import prisma from '../config/Database';
 import { BadRequestError } from '../utils/Errors';
+import logger from '../utils/Logger';
 
 export class AdminController {
   private puzzleService: PuzzleService;
@@ -13,14 +14,19 @@ export class AdminController {
     this.dailyPuzzleRepo = new DailyPuzzleRepository();
   }
 
-  generatePuzzle = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  generatePuzzle = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const puzzle = await this.puzzleService.generatePuzzle();
-      const remainingQuota = this.puzzleService.getRemainingQuota();
+      const { targetDifficulty } = req.body;
+      logger.info('AdminController.generatePuzzle called', { 
+        body: req.body, 
+        targetDifficulty,
+        targetDifficultyType: typeof targetDifficulty 
+      });
+      const puzzle = await this.puzzleService.generatePuzzle(targetDifficulty);
       
       res.json({
         puzzle,
-        remainingQuota,
+        remainingQuota: this.puzzleService.getRemainingQuota(),
       });
     } catch (error) {
       next(error);

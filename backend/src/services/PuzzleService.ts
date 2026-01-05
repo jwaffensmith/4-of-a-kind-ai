@@ -13,8 +13,8 @@ export class PuzzleService {
     this.aiService = new AIService();
   }
 
-  async generatePuzzle() {
-    const generated = await this.aiService.generatePuzzle();
+  async generatePuzzle(targetDifficulty?: 'easy' | 'medium' | 'hard') {
+    const generated = await this.aiService.generatePuzzle(targetDifficulty);
 
     const puzzle = await this.puzzleRepo.create({
       words: generated.words,
@@ -29,6 +29,7 @@ export class PuzzleService {
         puzzle_id: puzzle.id,
         details: {
           difficulty: puzzle.difficulty,
+          targetDifficulty: targetDifficulty || 'auto',
           remainingQuota: this.aiService.getRemainingGenerations(),
         },
       },
