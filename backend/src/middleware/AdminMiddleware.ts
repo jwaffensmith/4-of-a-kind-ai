@@ -6,6 +6,8 @@ import logger from '../utils/Logger';
 
 interface Session {
   created: number;
+// Token expiration: 1 day
+  exp: number;
 }
 
 // NOTE: In-memory storage is suitable for development only.
