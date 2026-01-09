@@ -3,7 +3,10 @@ export interface PuzzleCreateDto {
   categories: Array<{
     name: string;
     words: string[];
+    color: 'yellow' | 'green' | 'blue' | 'purple';
+    tier: 'easy' | 'medium' | 'hard' | 'difficult';
     difficulty: 'easy' | 'medium' | 'tricky' | 'hard';
+    reasoning?: string;
   }>;
   ai_reasoning: string;
   difficulty: string;
@@ -16,6 +19,9 @@ export interface PuzzleDto {
     name: string;
     words: string[];
     difficulty: string;
+    color?: string;
+    tier?: string;
+    reasoning?: string;
   }>;
   ai_reasoning: string;
   difficulty: string;

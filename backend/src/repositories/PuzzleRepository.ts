@@ -14,6 +14,25 @@ export class PuzzleRepository {
     });
   }
 
+  async findRecent(limit: number): Promise<Puzzle[]> {
+    return await prisma.puzzle.findMany({
+      orderBy: { created_at: 'desc' },
+      take: Math.max(0, Math.min(limit, 500)),
+      select: {
+        id: true,
+        words: true,
+        categories: true,
+        created_at: true,
+        difficulty: true,
+        is_reviewed: true,
+        times_played: true,
+        avg_completion_time: true,
+        avg_mistakes: true,
+        ai_reasoning: true,
+      },
+    });
+  }
+
   async findById(id: string): Promise<Puzzle | null> {
     return await prisma.puzzle.findUnique({
       where: { id },

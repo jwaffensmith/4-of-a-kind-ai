@@ -29,6 +29,23 @@ const difficultyStyles = {
   },
 };
 
+const colorStyles = {
+  yellow: { backgroundColor: '#f9ca24', color: '#000000' },
+  green: { backgroundColor: '#6dd5a0', color: '#000000' },
+  blue: { backgroundColor: '#4a90e2', color: '#000000' },
+  purple: { backgroundColor: '#a29bfe', color: '#000000' },
+} as const;
+
+function getCategoryStyle(category: Category) {
+  if ((category as any).color && (category as any).color in colorStyles) {
+    return colorStyles[(category as any).color as keyof typeof colorStyles];
+  }
+  if ((category as any).difficulty && (category as any).difficulty in difficultyStyles) {
+    return difficultyStyles[(category as any).difficulty as keyof typeof difficultyStyles];
+  }
+  return { backgroundColor: '#e5e7eb', color: '#000000' };
+}
+
 export const GameComplete = ({
   isWon,
   puzzle,
@@ -92,7 +109,7 @@ export const GameComplete = ({
               <div
                 key={category.name}
                 className="rounded-lg p-4"
-                style={difficultyStyles[category.difficulty as keyof typeof difficultyStyles]}
+                style={getCategoryStyle(category)}
               >
                 <h4 className="font-bold text-base mb-1 uppercase tracking-wide text-center">{category.name}</h4>
                 <p className="text-sm font-medium uppercase text-center mb-2">{category.words.join(', ')}</p>

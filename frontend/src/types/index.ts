@@ -22,7 +22,9 @@ export interface GamePuzzle {
 export interface Category {
   name: string;
   words: string[];
-  difficulty: 'easy' | 'medium' | 'tricky' | 'hard';
+  color?: 'yellow' | 'green' | 'blue' | 'purple';
+  tier?: 'easy' | 'medium' | 'hard' | 'difficult';
+  difficulty?: 'easy' | 'medium' | 'tricky' | 'hard';
   reasoning?: string;
 }
 

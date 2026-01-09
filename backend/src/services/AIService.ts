@@ -2,11 +2,15 @@ import OpenAI from 'openai';
 import env from '../config/Env';
 import logger from '../utils/Logger';
 import { TooManyRequestsError, InternalServerError } from '../utils/Errors';
+import { PuzzleRepository } from '../repositories/PuzzleRepository';
+import { validateGeneratedPuzzle } from './PuzzleValidation';
 
 interface PuzzleCategory {
   name: string;
   words: string[];
-  difficulty: 'easy' | 'medium' | 'hard';
+  color: 'yellow' | 'green' | 'blue' | 'purple';
+  tier: 'easy' | 'medium' | 'hard' | 'difficult';
+  difficulty: 'easy' | 'medium' | 'tricky' | 'hard';
   reasoning: string;
 }
 
@@ -17,6 +21,16 @@ interface GeneratedPuzzle {
   difficulty: string;
 }
 
+type PuzzleCategoryColor = PuzzleCategory['color'];
+type PuzzleCategoryTier = PuzzleCategory['tier'];
+
+const COLOR_TO_LEGACY_DIFFICULTY: Record<PuzzleCategoryColor, PuzzleCategory['difficulty']> = {
+  yellow: 'easy',
+  green: 'medium',
+  blue: 'tricky',
+  purple: 'hard',
+};
+
 export class AIService {
   private client: OpenAI;
   private dailyGenerationCount: number = 0;
@@ -24,11 +38,14 @@ export class AIService {
   private readonly MAX_DAILY_GENERATIONS = 100;
   private recentCategories: string[] = [];
   private readonly MAX_RECENT_CATEGORIES = 20;
+  private puzzleRepo: PuzzleRepository;
+  private readonly RECENT_PUZZLES_FOR_PROMPT = 50;
 
   constructor() {
     this.client = new OpenAI({
       apiKey: env.OPENAI_API_KEY,
     });
+    this.puzzleRepo = new PuzzleRepository();
   }
 
   private checkAndResetDailyLimit(): void {
@@ -45,6 +62,115 @@ export class AIService {
     return this.MAX_DAILY_GENERATIONS - this.dailyGenerationCount;
   }
 
+  private normalizeWord(word: string): string {
+    return word.trim().toUpperCase();
+  }
+
+  private getRecentAvoidanceContext(recentPuzzles: Array<{ words: any; categories: any }>): {
+    recentCategoryNames: string[];
+    recentWords: string[];
+  } {
+    const categoryNames: string[] = [];
+    const words: string[] = [];
+
+    for (const p of recentPuzzles) {
+      const pWords = Array.isArray(p.words) ? (p.words as string[]) : [];
+      for (const w of pWords) {
+        if (typeof w === 'string') words.push(this.normalizeWord(w));
+      }
+
+      const cats = Array.isArray(p.categories) ? (p.categories as any[]) : [];
+      for (const c of cats) {
+        if (c && typeof c.name === 'string') categoryNames.push(String(c.name).trim());
+      }
+    }
+
+    const seenNames = new Set<string>();
+    const uniqueNames: string[] = [];
+    for (const n of categoryNames) {
+      const key = n.toLowerCase();
+      if (seenNames.has(key)) continue;
+      seenNames.add(key);
+      uniqueNames.push(n);
+    }
+
+    const seenWords = new Set<string>();
+    const uniqueWords: string[] = [];
+    for (const w of words) {
+      if (seenWords.has(w)) continue;
+      seenWords.add(w);
+      uniqueWords.push(w);
+    }
+
+    return {
+      recentCategoryNames: uniqueNames.slice(0, 60),
+      recentWords: uniqueWords.slice(0, 800),
+    };
+  }
+
+  private normalizeCategoryName(name: string): string {
+    return name.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  private jaccardSimilarity(a: string, b: string): number {
+    const tok = (s: string) =>
+      s
+        .toLowerCase()
+        .split(/[^a-z0-9]+/g)
+        .map((t) => t.trim())
+        .filter(Boolean);
+    const A = new Set(tok(a));
+    const B = new Set(tok(b));
+    if (A.size === 0 && B.size === 0) return 1;
+    if (A.size === 0 || B.size === 0) return 0;
+    let inter = 0;
+    for (const t of A) if (B.has(t)) inter++;
+    const union = A.size + B.size - inter;
+    return union === 0 ? 0 : inter / union;
+  }
+
+  private async checkForNearDuplicates(words: string[], categories: PuzzleCategory[]): Promise<string[]> {
+    const errors: string[] = [];
+    const recent = await this.puzzleRepo.findRecent(200);
+
+    const recentWords = new Set<string>();
+    const recentCategoryNames: string[] = [];
+
+    for (const p of recent) {
+      const pWords = Array.isArray((p as any).words) ? ((p as any).words as string[]) : [];
+      for (const w of pWords) recentWords.add(this.normalizeWord(String(w)));
+
+      const cats = Array.isArray((p as any).categories) ? ((p as any).categories as any[]) : [];
+      for (const c of cats) {
+        if (c && typeof c.name === 'string') recentCategoryNames.push(String(c.name));
+      }
+    }
+
+    const overlaps = words.filter((w) => recentWords.has(this.normalizeWord(w)));
+    if (overlaps.length > 0) {
+      errors.push(`Word repeat vs recent puzzles: ${overlaps.slice(0, 12).join(', ')}${overlaps.length > 12 ? '…' : ''}`);
+    }
+
+    const SIM_THRESHOLD = 0.6;
+    for (const cat of categories) {
+      const catName = this.normalizeCategoryName(cat.name);
+      for (const prevName of recentCategoryNames) {
+        const prevNorm = this.normalizeCategoryName(prevName);
+        if (catName === prevNorm) {
+          errors.push(`Category theme repeated exactly: "${cat.name}"`);
+          break;
+        }
+        const sim = this.jaccardSimilarity(catName, prevNorm);
+        if (sim >= SIM_THRESHOLD) {
+          errors.push(`Category theme too similar to recent: "${cat.name}" ~ "${prevName}"`);
+          break;
+        }
+      }
+    }
+
+    return errors;
+  }
+
   async generatePuzzle(targetDifficulty?: 'easy' | 'medium' | 'hard'): Promise<GeneratedPuzzle> {
     this.checkAndResetDailyLimit();
 
@@ -55,109 +181,35 @@ export class AIService {
       );
     }
 
-    let systemPrompt = `You are a puzzle generator creating word connection puzzles. Each puzzle has:
-- 16 words divided into 4 hidden groups of 4 words each
-- Each group shares a specific connection or theme
-- 3 difficulty levels: Easy, Medium, Hard
+    const systemPrompt = `You generate NYT-Connections-style puzzles.
 
-CRITICAL REQUIREMENTS:
+HARD RULES:
+- Output MUST be JSON only (no markdown, no extra text).
+- 4 categories, 4 words each, total 16 UNIQUE words.
+- Words should be single tokens (no spaces), 3-14 chars, letters only, returned in UPPERCASE.
+- Every word should plausibly fit at least 2 categories (misedirection).
+- Avoid hyper-obvious groups (e.g. four planets, four colors, four US states) unless made tricky via wordplay.
+- Prefer cleverness over trivia; no more than one proper-noun-heavy category, and only for BLUE/PURPLE.
 
-1. PRIORITIZE VARIETY AND ROTATION:
-   - Imagine you're generating one of many puzzles in a series
-   - Actively vary your category choices to create a diverse collection
-   - Don't default to the easiest or most obvious connections
-   - Push yourself to explore different corners of knowledge and culture
-   - Each category should make solvers think "Oh, that's clever!" when revealed
+COLOR/TIER (EXACTLY ONE OF EACH PER PUZZLE):
+- YELLOW: easiest, tier="easy"
+- GREEN: medium, tier="medium"
+- BLUE: hard, tier="hard"
+- PURPLE: hardest, tier="difficult"
 
-2. MAXIMIZE DIVERSITY ACROSS DOMAINS:
-   The 4 categories MUST span completely different thematic domains:
-   - NEVER use similar domains (e.g., all nature, all household, all actions, all descriptors)
-   - Mix abstract and concrete concepts
-   - Combine different fields: science, arts, history, pop culture, language, geography, etc.
-
-3. VARY CONNECTION TYPES (use all 4 different types per puzzle):
-   - Semantic (categories/classifications)
-   - Functional (what they do/how they're used)
-   - Contextual (where/when found)
-   - Structural (word patterns/wordplay)
-   - Cultural (references/proper nouns)
-   - Linguistic (language features)
-
-4. INSPIRATION - CREATIVE CATEGORY TYPES TO EXPLORE:
-   - Historical figures, events, or eras
-   - Scientific concepts, elements, or phenomena
-   - Literary works, characters, or authors
-   - Musical terms, composers, or genres
-   - Geographic locations or features
-   - Mathematical or logical concepts
-   - Mythology or folklore references
-   - Word structure patterns (rhymes, anagrams, prefixes, suffixes)
-   - Pop culture references (films, TV, games)
-   - Professional jargon or technical terms
-   - Abstract concepts or emotions
-
-5. ENSURE WORD AMBIGUITY:
-   - Each word should plausibly fit into 2+ categories
-   - Avoid obvious groupings where all 4 words clearly belong together
-   - Create misdirection through clever word choice
-
-6. THINK STEP-BY-STEP BEFORE GENERATING:
-   Before creating categories, ask yourself:
-   - Are these 4 categories truly from different domains?
-   - Would this puzzle stand out in a collection of 50+ puzzles?
-   - Does each category use a different connection type?
-   - Am I defaulting to easy, obvious groupings? If yes, push further.
-   - Would this puzzle surprise and delight solvers?
-
-Return your response as valid JSON with this exact structure:
+Return JSON with this exact structure:
 {
   "categories": [
     {
+      "color": "yellow|green|blue|purple",
+      "tier": "easy|medium|hard|difficult",
       "name": "Category name",
-      "words": ["WORD1", "WORD2", "WORD3", "WORD4"],
-      "difficulty": "easy|medium|hard",
-      "reasoning": "Brief explanation of the connection"
+      "words": ["WORD1","WORD2","WORD3","WORD4"],
+      "reasoning": "One sentence"
     }
   ],
-  "overall_reasoning": "Explanation of how this puzzle achieves diversity across domains and connection types"
+  "overall_reasoning": "1-2 sentences on why the puzzle is tricky but fair and varied"
 }`;
-
-    if (targetDifficulty) {
-      const difficultyGuidance = {
-        easy: `
-
-DIFFICULTY TARGET: EASY
-Create a puzzle with overall EASY difficulty by distributing category difficulties as follows:
-- Aim for 2-3 EASY categories (straightforward, common knowledge connections)
-- Include 1-2 MEDIUM categories (slightly less obvious but accessible)
-- Include 0 HARD categories
-- The puzzle should be approachable and solvable by casual players
-- Focus on familiar concepts, common groupings, and clear connections`,
-
-        medium: `
-
-DIFFICULTY TARGET: MEDIUM
-Create a puzzle with overall MEDIUM difficulty by distributing category difficulties as follows:
-- Aim for 1-2 EASY categories (accessible entry points)
-- Include 2 MEDIUM categories (core of the puzzle)
-- Include 0-1 HARD category (subtle or specialized connection)
-- Balance accessibility with challenge
-- Mix familiar and less obvious connections`,
-
-        hard: `
-
-DIFFICULTY TARGET: HARD
-Create a puzzle with overall HARD difficulty by distributing category difficulties as follows:
-- Aim for 0-1 EASY category (at most one straightforward group)
-- Include 1 MEDIUM category (provides one accessible entry point)
-- Include 2-3 HARD categories (specialized knowledge, obscure connections, or very subtle wordplay)
-- Maximize ambiguity - every word should plausibly fit multiple categories
-- Use advanced vocabulary, specialized knowledge, or highly subtle patterns
-- This should challenge even experienced puzzle solvers`,
-      };
-
-      systemPrompt += difficultyGuidance[targetDifficulty];
-    }
 
     try {
       logger.info('Generating puzzle with OpenAI API');
@@ -171,68 +223,116 @@ Create a puzzle with overall HARD difficulty by distributing category difficulti
       ];
       const randomPrompt = varietyPrompts[Math.floor(Math.random() * varietyPrompts.length)];
 
+      const recentPuzzles = await this.puzzleRepo.findRecent(this.RECENT_PUZZLES_FOR_PROMPT);
+      const { recentCategoryNames, recentWords } = this.getRecentAvoidanceContext(
+        recentPuzzles.map((p) => ({ words: (p as any).words, categories: (p as any).categories }))
+      );
+
       let avoidanceMessage = '';
-      if (this.recentCategories.length > 0) {
-        avoidanceMessage = `\n\nRECENTLY USED CATEGORIES (DO NOT REPEAT THESE OR SIMILAR THEMES):\n${this.recentCategories.join(', ')}\n\nUse completely different category types from this list.`;
+      if (recentCategoryNames.length > 0 || recentWords.length > 0) {
+        avoidanceMessage = `\n\nAVOID REPEATS:\n- Do NOT reuse any of these recent WORDS:\n${recentWords.join(', ')}\n- Do NOT reuse these category themes or close variants:\n${recentCategoryNames.join(' | ')}`;
       }
 
-      let userPrompt = `Generate a highly original word connections puzzle. ${randomPrompt} Ensure maximum variety - the 4 categories must span completely different thematic domains and connection types. Rotate through different topic areas to keep puzzles fresh and interesting.`;
+      let userPrompt = `Generate a highly original NYT-style Connections puzzle. ${randomPrompt}
+Make the four categories clearly different domains AND different connection types (semantic / functional / contextual / wordplay or linguistic).
+At least one category must be wordplay/structural (prefix/suffix, homophones, double meanings, spelling patterns).`;
       
       if (targetDifficulty) {
-        userPrompt += ` TARGET DIFFICULTY: ${targetDifficulty.toUpperCase()}. Follow the difficulty distribution guidelines specified in the system prompt.`;
+        userPrompt += `\n\nPUZZLE DIFFICULTY TARGET: ${targetDifficulty.toUpperCase()}.
+This refers to overall trickiness/misdirection, NOT the color distribution (which must always be one of each color).`;
       }
       
       userPrompt += avoidanceMessage;
 
-      const response = await this.client.chat.completions.create({
-        model: 'gpt-5.1',
-        max_completion_tokens: 2000,
-        temperature: 1.0,
-        messages: [
-          {
-            role: 'system',
-            content: systemPrompt,
-          },
-          {
-            role: 'user',
-            content: userPrompt,
-          },
-        ],
-      });
+      const tryOnce = async (attempt: number) => {
+        const response = await this.client.chat.completions.create({
+          model: 'gpt-5.1',
+          max_completion_tokens: 2000,
+          temperature: 1.0,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+        });
 
-      const content = response.choices[0].message.content;
-      if (!content) {
-        throw new InternalServerError('Unexpected response format from OpenAI API');
+        const content = response.choices[0].message.content;
+        if (!content) {
+          throw new InternalServerError('Unexpected response format from OpenAI API');
+        }
+
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new InternalServerError('Failed to parse JSON from OpenAI response');
+        }
+
+        const parsedResponse = JSON.parse(jsonMatch[0]);
+
+        const words: string[] = [];
+        const categories: PuzzleCategory[] = parsedResponse.categories.map((cat: {
+          color: PuzzleCategoryColor;
+          tier: PuzzleCategoryTier;
+          name: string;
+          words: string[];
+          reasoning: string;
+        }) => {
+          const color = cat.color;
+          const tier = cat.tier;
+          const normalizedWords = (cat.words || []).map((w) => this.normalizeWord(String(w)));
+          words.push(...normalizedWords);
+          return {
+            color,
+            tier,
+            name: cat.name,
+            words: normalizedWords,
+            difficulty: COLOR_TO_LEGACY_DIFFICULTY[color],
+            reasoning: cat.reasoning,
+          };
+        });
+
+        const validationErrors = validateGeneratedPuzzle({
+          words,
+          categories: categories as any,
+        });
+        if (validationErrors.length > 0) {
+          throw new InternalServerError(
+            `Generated puzzle failed validation (attempt ${attempt}): ${validationErrors.join('; ')}`
+          );
+        }
+
+        const dupErrors = await this.checkForNearDuplicates(words, categories);
+        if (dupErrors.length > 0) {
+          throw new InternalServerError(
+            `Generated puzzle failed anti-repeat checks (attempt ${attempt}): ${dupErrors.join('; ')}`
+          );
+        }
+
+        return { words, categories, overall_reasoning: parsedResponse.overall_reasoning as string | undefined };
+      };
+
+      const MAX_ATTEMPTS = 3;
+      let lastError: unknown;
+      let generated: Awaited<ReturnType<typeof tryOnce>> | undefined;
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        try {
+          generated = await tryOnce(attempt);
+          break;
+        } catch (e) {
+          lastError = e;
+          logger.warn('Puzzle generation attempt failed; retrying', { attempt, error: e });
+        }
+      }
+      if (!generated) {
+        throw lastError instanceof Error
+          ? new InternalServerError(lastError.message)
+          : new InternalServerError('Failed to generate a valid puzzle after retries');
       }
 
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new InternalServerError('Failed to parse JSON from OpenAI response');
-      }
+      // With a fixed NYT-style one-of-each color distribution, category tiers no longer determine puzzle difficulty.
+      // Keep the puzzle-level difficulty as the requested target (or default to 'medium').
+      const overallDifficulty = targetDifficulty || 'medium';
 
-      const parsedResponse = JSON.parse(jsonMatch[0]);
-
-      const words: string[] = [];
-      const categories: PuzzleCategory[] = parsedResponse.categories.map((cat: {
-        name: string;
-        words: string[];
-        difficulty: 'easy' | 'medium' | 'hard';
-        reasoning: string;
-      }) => {
-        words.push(...cat.words);
-        return {
-          name: cat.name,
-          words: cat.words,
-          difficulty: cat.difficulty,
-          reasoning: cat.reasoning,
-        };
-      });
-
-      if (words.length !== 16) {
-        throw new InternalServerError('Generated puzzle does not have exactly 16 words');
-      }
-
-      const overallDifficulty = targetDifficulty || this.calculateOverallDifficulty(categories);
+      const categories = generated.categories;
+      const words = generated.words;
 
       categories.forEach(cat => {
         this.recentCategories.push(cat.name);
@@ -246,14 +346,13 @@ Create a puzzle with overall HARD difficulty by distributing category difficulti
         remainingGenerations: this.getRemainingGenerations(),
         recentCategoriesCount: this.recentCategories.length,
         targetDifficulty: targetDifficulty || 'auto',
-        calculatedDifficulty: this.calculateOverallDifficulty(categories),
         finalDifficulty: overallDifficulty,
       });
 
       return {
         words,
         categories,
-        ai_reasoning: parsedResponse.overall_reasoning || 'AI-generated puzzle with diverse categories.',
+        ai_reasoning: generated.overall_reasoning || 'AI-generated puzzle with diverse categories.',
         difficulty: overallDifficulty,
       };
     } catch (error) {
@@ -263,20 +362,5 @@ Create a puzzle with overall HARD difficulty by distributing category difficulti
       logger.error('Failed to generate puzzle', { error });
       throw new InternalServerError('Failed to generate puzzle. Please try again.');
     }
-  }
-
-  private calculateOverallDifficulty(categories: PuzzleCategory[]): string {
-    const difficultyScores = {
-      easy: 1,
-      medium: 2,
-      hard: 3,
-    };
-
-    const avgScore =
-      categories.reduce((sum, cat) => sum + difficultyScores[cat.difficulty], 0) / categories.length;
-
-    if (avgScore <= 1.5) return 'easy';
-    if (avgScore <= 2.25) return 'medium';
-    return 'hard';
   }
 }
