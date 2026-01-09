@@ -185,8 +185,8 @@ Create a puzzle with overall HARD difficulty by distributing category difficulti
       userPrompt += avoidanceMessage;
 
       const response = await this.client.chat.completions.create({
-        model: 'gpt-4o',
-        max_tokens: 2000,
+        model: 'gpt-5.1',
+        max_completion_tokens: 2000,
         temperature: 1.0,
         messages: [
           {
