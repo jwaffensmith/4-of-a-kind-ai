@@ -1,4 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import env from '../config/Env';
 import logger from '../utils/Logger';
 import { TooManyRequestsError, InternalServerError } from '../utils/Errors';
@@ -18,7 +18,7 @@ interface GeneratedPuzzle {
 }
 
 export class AIService {
-  private client: Anthropic;
+  private client: OpenAI;
   private dailyGenerationCount: number = 0;
   private lastResetDate: string = new Date().toISOString().split('T')[0];
   private readonly MAX_DAILY_GENERATIONS = 100;
@@ -26,8 +26,8 @@ export class AIService {
   private readonly MAX_RECENT_CATEGORIES = 20;
 
   constructor() {
-    this.client = new Anthropic({
-      apiKey: env.CLAUDE_API_KEY,
+    this.client = new OpenAI({
+      apiKey: env.OPENAI_API_KEY,
     });
   }
 
@@ -160,7 +160,7 @@ Create a puzzle with overall HARD difficulty by distributing category difficulti
     }
 
     try {
-      logger.info('Generating puzzle with Claude API');
+      logger.info('Generating puzzle with OpenAI API');
 
       const varietyPrompts = [
         'Create a puzzle that explores unexpected connections from different knowledge domains.',
@@ -184,27 +184,30 @@ Create a puzzle with overall HARD difficulty by distributing category difficulti
       
       userPrompt += avoidanceMessage;
 
-      const response = await this.client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+      const response = await this.client.chat.completions.create({
+        model: 'gpt-4o',
         max_tokens: 2000,
         temperature: 1.0,
         messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
           {
             role: 'user',
             content: userPrompt,
           },
         ],
-        system: systemPrompt,
       });
 
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new InternalServerError('Unexpected response format from Claude API');
+      const content = response.choices[0].message.content;
+      if (!content) {
+        throw new InternalServerError('Unexpected response format from OpenAI API');
       }
 
-      const jsonMatch = content.text.match(/\{[\s\S]*\}/);
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new InternalServerError('Failed to parse JSON from Claude response');
+        throw new InternalServerError('Failed to parse JSON from OpenAI response');
       }
 
       const parsedResponse = JSON.parse(jsonMatch[0]);

@@ -4,7 +4,7 @@ config();
 
 const env = {
   DATABASE_URL: process.env.DATABASE_URL || '',
-  CLAUDE_API_KEY: process.env.CLAUDE_API_KEY || '',
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || '',
   JWT_SECRET: process.env.JWT_SECRET || '',
   PORT: parseInt(process.env.PORT || '3001', 10),
